@@ -5,17 +5,17 @@ from tkinter import ttk
 from tkcalendar import DateEntry
 from datetime import *
 
-from mysql.connector import (connection)
+import mysql.connector
 
 # Conexión a la base de datos remota
 def conectar_BaseDeDatos(opcion):
-    cnx = connection.MySQLConnection(user='hpn9tpk1dry0lmzu7377', password='pscale_pw_z8FWTgp8gcRZJUEmtlO1GTY2mep54VHI46hlq7lxyOm',
+    conexion_bdd = mysql.connector.connect(user='hpn9tpk1dry0lmzu7377', password='pscale_pw_z8FWTgp8gcRZJUEmtlO1GTY2mep54VHI46hlq7lxyOm',
                                     host='us-east.connect.psdb.cloud',
                                     database='administracion-ingresos-egresos')
     
     # Importar la base de datos
     if opcion==1:
-        mycursor = cnx.cursor()
+        mycursor = conexion_bdd.cursor()
         mycursor.execute("SELECT * FROM Transaccion")
         fila = mycursor.fetchall()
 
@@ -25,21 +25,24 @@ def conectar_BaseDeDatos(opcion):
     
     # Agregar elemento a la base de datos
     elif opcion==2:
-        cursor1=cnx.cursor()
-        cursor1.execute("SELECT COUNT(*) FROM Transaccion WHERE CAST(numero AS CHAR(10)) LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipo)+"'")
-        numero=cursor1.fetchall()+1
+        mycursor=conexion_bdd.cursor()
+        mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE CAST(numero AS CHAR(10)) LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipo)+"'")
+        fila = mycursor.fetchall()
+        numero = int(str(int(fila[0][0])+1)+str(fecha.year))
 
-        mySql_insert_query = "INSERT INTO Transaccion (numero, tipo, asunto, persona, fecha, medio, nCheque, monto, descripcion) VALUES ("+str(numero)+",'"+tipo+"','"+asunto+"','"+persona+"',"+fecha.strftime('%Y')+"-"+fecha.strftime('%m')+"-"+fecha.strftime('%d')+",'"+medio+"',"+str(ncheque)+","+str(monto)+",'"+descripcion+"');"
+        sql = "INSERT INTO Transaccion (numero, tipo, asunto, persona, fecha, medio, nCheque, monto, descripcion) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        valores = (numero, tipo, asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion)
 
-        mycursor = connection.cursor()
-        mycursor.execute(mySql_insert_query)
-        connection.commit()
+
+        mycursor = conexion_bdd.cursor()
+        mycursor.execute(sql, valores)
+        conexion_bdd.commit()
 
     # Buscar en la base de datos por persona (Recibido de:/Enviado a:)
     elif opcion==3:
         if busqueda_var.get() != "":
             tabla.delete(*tabla.get_children())
-            mycursor = cnx.cursor()
+            mycursor = conexion_bdd.cursor()
             mycursor.execute("SELECT * FROM Transaccion WHERE `persona` LIKE '%"+busqueda_var.get()+"%'")
             fila = mycursor.fetchall()
             for dato in fila:
@@ -48,7 +51,7 @@ def conectar_BaseDeDatos(opcion):
     # Limpiar busqueda de la base de datos
     else:
         tabla.delete(*tabla.get_children())
-        mycursor = cnx.cursor()
+        mycursor = conexion_bdd.cursor()
         mycursor.execute("SELECT * FROM Transaccion")
         fila = mycursor.fetchall()
 
@@ -56,7 +59,7 @@ def conectar_BaseDeDatos(opcion):
             print(dato[0])
             tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4], dato[5], dato[6], dato[7], dato[8]))
             
-    cnx.close()
+    conexion_bdd.close()
 
 c = Contenedor()
 
