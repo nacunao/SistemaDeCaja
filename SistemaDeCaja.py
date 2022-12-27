@@ -4,6 +4,7 @@ from tkinter import *
 from tkinter import ttk
 from tkcalendar import DateEntry
 from datetime import *
+import pandas as pd
 
 import mysql.connector
 
@@ -20,7 +21,6 @@ def conectar_BaseDeDatos(opcion):
         fila = mycursor.fetchall()
 
         for dato in fila:
-            print(dato[0])
             tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4], dato[5], dato[6], dato[7], dato[8]))
     
     # Agregar elemento a la base de datos
@@ -49,15 +49,30 @@ def conectar_BaseDeDatos(opcion):
                 tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4], dato[5], dato[6], dato[7], dato[8]))
     
     # Limpiar busqueda de la base de datos
-    else:
+    elif opcion==4:
         tabla.delete(*tabla.get_children())
         mycursor = conexion_bdd.cursor()
         mycursor.execute("SELECT * FROM Transaccion")
         fila = mycursor.fetchall()
 
         for dato in fila:
-            print(dato[0])
             tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4], dato[5], dato[6], dato[7], dato[8]))
+
+    # Filtrar Tabla
+    else:
+        tabla.delete(*tabla.get_children())
+        mycursor = conexion_bdd.cursor()
+        if filtroTipo_var.get()!='Todos':
+            mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"'")
+        else: mycursor.execute("SELECT * FROM Transaccion")
+        fila = mycursor.fetchall()
+
+        for dato in fila:
+            tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4], dato[5], dato[6], dato[7], dato[8]))
+    
+
+        
+
             
     conexion_bdd.close()
 
@@ -87,8 +102,10 @@ class Aplicacion(Frame):
         contenedor1.place(x=40, y=10, width=575, height=75)
         contenedor2=LabelFrame(self.master, text="Operaciones", bg='#E64611', fg='#FFFFFF')
         contenedor2.place(x=40, y=580, width=375, height=75)
-        contenedorTabla=Label(self.master, text="Base de datos", bg='#EDB712', fg='#FFFFFF')
+        contenedorTabla=Frame(self.master, bg='#EDB712')
         contenedorTabla.place(x=40, y=120, width=1120, height=420)
+        contenedorFiltroTipo=LabelFrame(self.master, text="Filtrar por tipo" ,bg='#C5A97B', fg='#FFFFFF')
+        contenedorFiltroTipo.place(x=630, y=10, width=220, height=75)
         
         # Tabla
         global tabla
@@ -137,9 +154,20 @@ class Aplicacion(Frame):
                 boton1['state']=NORMAL
             else: boton1['state']=DISABLED
         # Entradas
+        global entrada1
         entrada1=Entry(contenedor1, textvariable=busqueda_var)
         entrada1.place(x=20, y=10, width=350, height=32)
         self.master.bind('<KeyRelease>', habilitar_boton)
+        
+        
+        global filtroTipo_var
+        filtroTipo_var=StringVar(value='Todos')
+
+        # Combobox
+        combo_tipo=ttk.Combobox(contenedorFiltroTipo, values=['Todos', 'Ingreso', 'Egreso'], textvariable=filtroTipo_var, font=("Helvetica", 12), state='readonly')
+        combo_tipo.place(x=10, y=10, width=200)
+        combo_tipo.bind('<<ComboboxSelected>>', self.filtrar_tabla)
+
 
         # Botones
         boton1=Button(contenedor1, text="Buscar", command=self.buscar_persona, font=("Helvetica", 12), bg='#FFFFFF')
@@ -166,7 +194,13 @@ class Aplicacion(Frame):
         conectar_BaseDeDatos(3)
 
     def limpiar_tabla(self):
+        entrada1.delete(0, 'end')
         conectar_BaseDeDatos(4)
+
+    def filtrar_tabla(self, evento):
+        conectar_BaseDeDatos(5)
+
+
 
 #=================================VENTANA SECUNDARIA AGREGAR INGRESO===========================
 class VentanaSecundariaAgregarIngreso(Frame):
