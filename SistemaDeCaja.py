@@ -1,12 +1,25 @@
 from Contenedor import *
 
+# Librerías Interfaz Gráfica Tkinter
 from tkinter import *
 from tkinter import ttk
 from tkcalendar import DateEntry
 from datetime import *
-import pandas as pd
 
+# Librería conexión base de datos por medio de mysql
 import mysql.connector
+
+# Librerías edición docx
+from pathlib import Path
+from docxtpl import DocxTemplate
+from win32com import client
+import os
+
+from numeros_a_letras import *
+
+# Librerías impresión
+from win32 import win32print
+from win32 import win32api
 
 # Conexión a la base de datos remota
 def conectar_BaseDeDatos(opcion):
@@ -21,13 +34,14 @@ def conectar_BaseDeDatos(opcion):
         fila = mycursor.fetchall()
 
         for dato in fila:
-            tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4], dato[5], dato[6], dato[7], dato[8]))
+            tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
     
     # Agregar elemento a la base de datos
     elif opcion==2:
         mycursor=conexion_bdd.cursor()
         mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE CAST(numero AS CHAR(10)) LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipo)+"'")
         fila = mycursor.fetchall()
+        global numero
         numero = int(str(int(fila[0][0])+1)+str(fecha.year))
 
         sql = "INSERT INTO Transaccion (numero, tipo, asunto, persona, fecha, medio, nCheque, monto, descripcion) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
@@ -46,7 +60,7 @@ def conectar_BaseDeDatos(opcion):
             mycursor.execute("SELECT * FROM Transaccion WHERE `persona` LIKE '%"+busqueda_var.get()+"%'")
             fila = mycursor.fetchall()
             for dato in fila:
-                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4], dato[5], dato[6], dato[7], dato[8]))
+                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
     
     # Limpiar busqueda de la base de datos
     elif opcion==4:
@@ -56,7 +70,7 @@ def conectar_BaseDeDatos(opcion):
         fila = mycursor.fetchall()
 
         for dato in fila:
-            tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4], dato[5], dato[6], dato[7], dato[8]))
+            tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
 
     # Filtrar Tabla
     else:
@@ -68,7 +82,7 @@ def conectar_BaseDeDatos(opcion):
         fila = mycursor.fetchall()
 
         for dato in fila:
-            tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4], dato[5], dato[6], dato[7], dato[8]))
+            tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
     
 
         
@@ -91,11 +105,13 @@ class Aplicacion(Frame):
         screen_height = self.master.winfo_screenheight()
         x = (screen_width/2) - (width/2)
         y = (screen_height/2) - (height/2)
-        self.master.geometry("%dx%d+%d+%d" % (width, height, x, y))
+        self.master.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
         self.master.resizable(width=False, height=False)
         self.master.configure(bg='#FFFFFF')
 
         self.master.iconbitmap('abv_icon.ico')
+
+
 
         # Label Frames
         contenedor1=LabelFrame(self.master, text="Buscador Persona", bg='#8297BC', fg='#FFFFFF')
@@ -104,44 +120,43 @@ class Aplicacion(Frame):
         contenedor2.place(x=40, y=580, width=375, height=75)
         contenedorTabla=Frame(self.master, bg='#EDB712')
         contenedorTabla.place(x=40, y=120, width=1120, height=420)
-        contenedorFiltroTipo=LabelFrame(self.master, text="Filtrar por tipo" ,bg='#C5A97B', fg='#FFFFFF')
+        contenedorFiltroTipo=LabelFrame(self.master, text="Filtrar por tipo", bg='#C5A97B', fg='#FFFFFF')
         contenedorFiltroTipo.place(x=630, y=10, width=220, height=75)
         
         # Tabla
         global tabla
         global barra1
         global barra2
-        barra1=Scrollbar(contenedorTabla, orient=HORIZONTAL)
-        barra1.pack(side=BOTTOM, fill=X)
-        barra2=Scrollbar(contenedorTabla, orient=VERTICAL)
-        barra2.pack(side=RIGHT, fill=Y)
-        tabla = ttk.Treeview(contenedorTabla, selectmode='extend', xscrollcommand=barra1, yscrollcommand=barra2)
+        tabla = ttk.Treeview(contenedorTabla, selectmode='extended')
         tabla.place(x=10, y=10, width=1080, height=380)
         tabla['columns']=("1", "2", "3", "4", "5", "6", "7", "8", "9")
         tabla['show']='headings'
+        barra1=Scrollbar(contenedorTabla, orient=HORIZONTAL, command=tabla.xview)
+        barra1.place(x=10, y=395, width=1080)
+        barra2=Scrollbar(contenedorTabla, orient=VERTICAL, command=tabla.yview)
+        barra2.place(x=1095, y=10, height=380)
         
-        barra1.config(command=tabla.xview)
-        barra2.config(command=tabla.yview)
-        
-        tabla.column('1', minwidth=80, width=80)
-        tabla.column('2', minwidth=100, width=100)
-        tabla.column('3', minwidth=300, width=300)
-        tabla.column('4', minwidth=300, width=300)
-        tabla.column('5', minwidth=80, width=80)
-        tabla.column('6', minwidth=80, width=80)
-        tabla.column('7', minwidth=300, width=300)
-        tabla.column('8', minwidth=100, width=100)
-        tabla.column('9', minwidth=300, width=300)
+        tabla.configure(xscrollcommand=barra1.set, yscrollcommand=barra2.set)
 
-        tabla.heading('1', text="Número",anchor=W)
-        tabla.heading('2', text="Tipo",anchor=W)
-        tabla.heading('3', text="Asunto",anchor=W)
-        tabla.heading('4', text="Recibido de/Enviado a",anchor=W)
-        tabla.heading('5', text="Fecha",anchor=W)
-        tabla.heading('6', text="Medio",anchor=W)
-        tabla.heading('7', text="Número de Cheque",anchor=W)
-        tabla.heading('8', text="Monto",anchor=W)
-        tabla.heading('9', text="Por concepto de",anchor=W)
+        tabla.heading('1', text="Número", anchor=W)
+        tabla.heading('2', text="Tipo", anchor=W)
+        tabla.heading('3', text="Asunto", anchor=W)
+        tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
+        tabla.heading('5', text="Fecha", anchor=W)
+        tabla.heading('6', text="Medio", anchor=W)
+        tabla.heading('7', text="Número de Cheque", anchor=W)
+        tabla.heading('8', text="Monto", anchor=W)
+        tabla.heading('9', text="Por concepto de", anchor=W)
+        
+        tabla.column('1', stretch=NO, minwidth=80, width=80)
+        tabla.column('2', stretch=NO, minwidth=100, width=100)
+        tabla.column('3', stretch=NO, minwidth=300, width=300)
+        tabla.column('4', stretch=NO, minwidth=300, width=300)
+        tabla.column('5', stretch=NO, minwidth=80, width=80)
+        tabla.column('6', stretch=NO, minwidth=80, width=80)
+        tabla.column('7', stretch=NO, minwidth=300, width=300)
+        tabla.column('8', stretch=NO, minwidth=100, width=100)
+        tabla.column('9', stretch=NO, minwidth=300, width=300)
 
         # Conexión con la base de datos (importación de datos)
         conectar_BaseDeDatos(1)
@@ -170,14 +185,14 @@ class Aplicacion(Frame):
 
 
         # Botones
-        boton1=Button(contenedor1, text="Buscar", command=self.buscar_persona, font=("Helvetica", 12), bg='#FFFFFF')
+        boton1=Button(contenedor1, text="Buscar", command=self.buscar_persona, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
         boton1.place(x=400, y=10)
         boton1['state']=DISABLED
-        boton2=Button(contenedor1, text="Limpiar", command=self.limpiar_tabla, font=("Helvetica", 12), bg='#FFFFFF')
+        boton2=Button(contenedor1, text="Limpiar", command=self.limpiar_tabla, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
         boton2.place(x=475, y=10)
-        boton3=Button(contenedor2, text="Agregar Ingreso", command=self.abrir_ventanaSecundaria1, font=("Helvetica", 12))
+        boton3=Button(contenedor2, text="Agregar Ingreso", command=self.abrir_ventanaSecundaria1, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
         boton3.place(x=20, y=10)
-        boton4=Button(contenedor2, text="Agregar Egreso", command=self.abrir_ventanaSecundaria2, font=("Helvetica", 12))
+        boton4=Button(contenedor2, text="Agregar Egreso", command=self.abrir_ventanaSecundaria2, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
         boton4.place(x=220, y=10)
 
 
@@ -199,6 +214,9 @@ class Aplicacion(Frame):
 
     def filtrar_tabla(self, evento):
         conectar_BaseDeDatos(5)
+
+    def actualizar_tabla(self):
+        conectar_BaseDeDatos(4)
 
 
 
@@ -319,7 +337,7 @@ def inicializar_componentes(self, tipo, medio):
         self.entrada1=Entry(self.contenedor1, textvariable=self.asunto_var, font=("Helvetica", 13))
         self.entrada1.place(x=10, y=5, width=660, height=32)
 
-        self.entrada2=ttk.Combobox(self.contenedor2, textvariable=self.persona_var, font=("Helvetica", 13))
+        self.entrada2=ttk.Combobox(self.contenedor2, textvariable=self.persona_var, font=("Helvetica", 13), state='readonly')
         if tipo=="Ingreso":
             c.agregarRecibidoDe('nuevo')
             self.entrada2['values']=c.lista_recibido_de
@@ -348,16 +366,16 @@ def inicializar_componentes(self, tipo, medio):
 
 
         # CheckBox
-        self.checkBox=Checkbutton(self.nuevo, text="¿Desea imprimir los datos del "+tipo+" en pdf?", variable=self.imprimir, onvalue=1, offvalue=0, font=("Helvetica", 12))
+        self.checkBox=Checkbutton(self.nuevo, text="¿Desea imprimir los datos del "+tipo+" en pdf?", variable=self.imprimir, onvalue=TRUE, offvalue=FALSE, font=("Helvetica", 12))
         self.checkBox.configure(bg='#FFFFFF')
         self.checkBox.place(x=40, y=600)
 
         # Botones
-        self.boton1=Button(self.nuevo, text="Regresar", command=lambda:cerrar_ventanaSecundaria(self), font=("Helvetica", 13))
+        self.boton1=Button(self.nuevo, text="Regresar", command=lambda:cerrar_ventanaSecundaria(self), font=("Helvetica", 13), borderwidth=0)
         self.boton1.configure(bg='#FFD1A5')
         self.boton1.place(x=500, y=600)
 
-        self.boton2=Button(self.nuevo, text="Agregar", command=lambda:crearTransaccion(self, tipo), font=("Helvetica", 13))
+        self.boton2=Button(self.nuevo, text="Agregar", command=lambda:crearTransaccion(self, tipo), font=("Helvetica", 13), borderwidth=0)
         self.boton2.configure(bg='#FFD1A5')
         self.boton2.place(x=630, y=600)
         self.boton2['state']=DISABLED
@@ -394,7 +412,6 @@ def inicializar_radioBotones(self):
 
     
 def crearTransaccion(self, t):
-    global numero
     global tipo
     global asunto
     global persona
@@ -417,8 +434,93 @@ def crearTransaccion(self, t):
     tipo=t
     
     conectar_BaseDeDatos(2)
+    if self.imprimir.get()==TRUE:
+        documento=crear_documento()
+        imprimir_documento(documento)
     cerrar_ventanaSecundaria(self)
+    
 
+def crear_documento():
+    plantilla_documento = Path(__file__).parent / "plantilla_documento.docx"
+    documento = DocxTemplate(plantilla_documento)
+
+    text_persona=''
+    if tipo=='Ingreso':
+        text_persona="RECIBIDO DE"
+    else: text_persona="ENVIADO A"
+
+    f=Formato()
+    monto_en_palabras=f.numero_a_moneda_sunat(monto)
+
+
+    if medio=='Cheque':
+        context = {
+            "NUMERO": numero,
+            "TIPO": tipo,
+            "ASUNTO": asunto,
+            "ETIQUETA_P": text_persona,
+            "PERSONA": persona,
+            "FECHA": fecha.strftime("%d-%m-%Y"),
+            "CHEQUE": ncheque,
+            "E": "",
+            "T": "",
+            "MONTO": monto,
+            "MONTO_PALABRAS": monto_en_palabras,
+            "DESCRIPCION": descripcion,
+        }
+    elif medio=='Efectivo':
+        context = {
+            "NUMERO": numero,
+            "TIPO": tipo,
+            "ASUNTO": asunto,
+            "ETIQUETA_P": text_persona,
+            "PERSONA": persona,
+            "FECHA": fecha.strftime("%d-%m-%Y"),
+            "CHEQUE": "",
+            "E": "X",
+            "T": "",
+            "MONTO": monto,
+            "MONTO_PALABRAS": monto_en_palabras,
+            "DESCRIPCION": descripcion,
+        }
+    else:
+        context = {
+            "NUMERO": numero,
+            "TIPO": tipo,
+            "ASUNTO": asunto,
+            "ETIQUETA_P": text_persona,
+            "PERSONA": persona,
+            "FECHA": fecha.strftime("%d-%m-%Y"),
+            "CHEQUE": "",
+            "E": "",
+            "T": "X",
+            "MONTO": monto,
+            "MONTO_PALABRAS": monto_en_palabras,
+            "DESCRIPCION": descripcion,
+        }
+
+    documento.render(context)
+    documento.save(Path(__file__).parent / f"{numero}_{tipo}.docx")
+    word_app = client.Dispatch("Word.Application")
+    rod =os.path.dirname(os.path.abspath(__file__))
+    doc = word_app.Documents.Open(rod+"\\"+str(numero)+"_"+tipo+".docx")
+    doc.SaveAs(rod+"\\"+str(numero)+"_"+tipo+".pdf", FileFormat=17)
+    word_app.Quit()
+    return doc
+
+def imprimir_documento(documento):
+    name = win32print.GetDefaultPrinter()
+    printdefaults = {"DesiredAccess": win32print.PRINTER_ALL_ACCESS}
+    handle = win32print.OpenPrinter(name, printdefaults)
+    level = 2
+    attributes = win32print.GetPrinter(handle, level)
+    attributes['pDevMode'].Duplex = 3 
+    win32print.SetPrinter(handle, level, attributes, 0)
+    win32print.GetPrinter(handle, level)['pDevMode'].Duplex
+    
+    win32api.ShellExecute(0, "print", str(numero)+"_"+tipo+".pdf", None,  ".",  0)
+    win32print.ClosePrinter(handle)
+    
 
 def cerrar_ventanaSecundaria(self):
     c.eliminarRecibidoDe('nuevo')
