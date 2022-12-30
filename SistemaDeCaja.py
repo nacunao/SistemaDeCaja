@@ -1,9 +1,8 @@
-from Contenedor import *
 
 # Librerías Interfaz Gráfica Tkinter
 from tkinter import *
 from tkinter import ttk
-from tkcalendar import DateEntry
+from tkcalendar import dateentry 
 from datetime import *
 
 # Librería conexión base de datos por medio de mysql
@@ -15,11 +14,240 @@ from docxtpl import DocxTemplate
 from win32com import client
 import os
 
-from numeros_a_letras import *
 
 # Librerías impresión
 from win32 import win32print
 from win32 import win32api
+
+# LISTAS ASUNTO
+lista_asunto_ingreso=[
+    'ARRIENDO',
+    'ARRIENDO CONFITERIA EL FORTÍN',
+    'ARRIENDO ACHAVAR',
+    'ARRIENDO RESTAURANT LA VERTIENTE',
+    'ARRIENDO RESTAURANT KOPPA',
+    'ARRIENDO RESTAURANT CLAUDIA',
+    'ARRIENDO SEGUT',
+    'ARRIENDO CAFETERIA',
+    'ARRIENDO FIN DE SEMANA',
+    'PASE JUGADOR',
+    'PRÉSTAMO JUGADOR',
+    'BORDERÓ',
+    'APORTE',
+    'PUBLICIDAD',
+    'FONDOS CONCURSABLES',
+    'APORTE PARTICULAR',
+    'OTRO']
+lista_asunto_egreso=[
+    'REMUNERACIONES',
+    'HONORARIOS',
+    'CONTRIBUCIONES',
+    'CELULAR',
+    'CAJA CHICA',
+    'MANTENCIÓN GENERAL',
+    'MANTENCIÓN ELECTRÓNICA',
+    'ARBITROS',
+    'CRONOMETRISTA',
+    'DEUDA CONVENIO',
+    'GASTOS COPA PANCHO',
+    'TRABAJO EXTRA',
+    'TRANSPORTE',
+    'COMUNICACIONES',
+    'AGUINALDO',
+    'VARIOS',
+    'OTRO'
+]
+
+# LISTAS RECIBIDO DE/ENVIADO A
+lista_recibido_de=[
+    'LIN DIAZ'
+    'SAMUEL BERNAL',
+    'ERIKA BERNAL',
+    'MUNICIPALIDAD',
+    'PUERTO VALPARAISO',
+    'PARTICULAR',
+    'OTRO']
+lista_enviado_a=[
+    'PREVIRED'
+    'TESORERÍA GENERAL DE LA REPÚBLICA',
+    'CHILQUINTA',
+    'GASVALPO',
+    'ESVAL',
+    'OTRO'
+]
+
+
+MAX_NUMERO = 999999999999
+
+UNIDADES = (
+    'CERO',
+    'UNO',
+    'DOS',
+    'TRES',
+    'CUATRO',
+    'CINCO',
+    'SEIS',
+    'SIETE',
+    'OCHO',
+    'NUEVE'
+)
+
+DECENAS = (
+    'DIEZ',
+    'ONCE',
+    'DOCE',
+    'TRECE',
+    'CATORCE',
+    'QUINCE',
+    'DIECISEIS',
+    'DIECISIETE',
+    'DIECIOCHO',
+    'DIECINUEVE'
+)
+
+DIEZ_DIEZ = (
+    'CERO',
+    'DIEZ',
+    'VEINTE',
+    'TREINTA',
+    'CUARENTA',
+    'CINCUENTA',
+    'SESENTA',
+    'SETENTA',
+    'OCHENTA',
+    'NOVENTA'
+)
+
+CIENTOS = (
+    '_',
+    'CIENTO',
+    'DOSCIENTOS',
+    'TRESCIENTOS',
+    'CUATROSCIENTOS',
+    'QUINIENTOS',
+    'SEISCIENTOS',
+    'SETECIENTOS',
+    'OCHOCIENTOS',
+    'NOVECIENTOS'
+)
+
+class Formato:
+    def __init__(self) -> None:
+        pass
+
+    def numero_a_moneda_sunat(self, numero):
+        numero_entero = int(numero)
+        letras = numero_a_letras(numero_entero)
+        letras = letras.replace('UNO', 'UN')
+        letras = f"{letras}"
+        return letras
+
+    
+def numero_a_letras(numero):
+    numero_entero = int(numero)
+    if numero_entero > MAX_NUMERO:
+        raise OverflowError('Número demasiado alto')
+    if numero_entero < 0:
+        negativo_letras = numero_a_letras(abs(numero))
+        return f"MENOS {negativo_letras}"
+    if numero_entero <= 99:
+        resultado = leer_decenas(numero_entero)
+    elif numero_entero <= 999:
+        resultado = leer_centenas(numero_entero)
+    elif numero_entero <= 999999:
+        resultado = leer_miles(numero_entero)
+    elif numero_entero <= 999999999:
+        resultado = leer_millones(numero_entero)
+    else:
+        resultado = leer_millardos(numero_entero)
+    resultado = resultado.replace('UNO MIL', 'UN MIL')
+    resultado = resultado.strip()
+    resultado = resultado.replace(' _ ', ' ')
+    resultado = resultado.replace('  ', ' ')
+    return resultado
+
+
+def numero_a_moneda(numero):
+    numero_entero = int(numero)
+    letras = numero_a_letras(numero_entero)
+    letras = letras.replace('UNO', 'UN')
+    letras = f"{letras}"
+    return letras
+
+
+def leer_decenas(numero):
+    if numero < 10:
+        return UNIDADES[numero]
+    decena, unidad = divmod(numero, 10)
+    if numero <= 19:
+        resultado = DECENAS[unidad]
+    elif numero <= 29:
+        resultado = f"VEINTI{UNIDADES[unidad]}"
+    else:
+        resultado = DIEZ_DIEZ[decena]
+        if unidad > 0:
+            resultado = f"{resultado} Y {UNIDADES[unidad]}"
+    return resultado
+
+
+def leer_centenas(numero):
+    centena, decena = divmod(numero, 100)
+    if numero == 0:
+        resultado = 'CIEN'
+    else:
+        resultado = CIENTOS[centena]
+        if decena > 0:
+            decena_letras = leer_decenas(decena)
+            resultado = f"{resultado} {decena_letras}"
+    return resultado
+
+
+def leer_miles(numero):
+    millar, centena = divmod(numero, 1000)
+    resultado = ''
+    if millar == 1:
+        resultado = ''
+    if (millar >= 2) and (millar <= 9):
+        resultado = UNIDADES[millar]
+    elif (millar >= 10) and (millar <= 99):
+        resultado = leer_decenas(millar)
+    elif (millar >= 100) and (millar <= 999):
+        resultado = leer_centenas(millar)
+    resultado = f"{resultado} MIL"
+    if centena > 0:
+        centena_letras = leer_centenas(centena)
+        resultado = f"{resultado} {centena_letras}"
+    return resultado.strip()
+
+
+def leer_millones(numero):
+    millon, millar = divmod(numero, 1000000)
+    resultado = ''
+    if millon == 1:
+        resultado = ' UN MILLON '
+    if (millon >= 2) and (millon <= 9):
+        resultado = UNIDADES[millon]
+    elif (millon >= 10) and (millon <= 99):
+        resultado = leer_decenas(millon)
+    elif (millon >= 100) and (millon <= 999):
+        resultado = leer_centenas(millon)
+    if millon > 1:
+        resultado = f"{resultado} MILLONES"
+    if (millar > 0) and (millar <= 999):
+        centena_letras = leer_centenas(millar)
+        resultado = f"{resultado} {centena_letras}"
+    elif (millar >= 1000) and (millar <= 999999):
+        miles_letras = leer_miles(millar)
+        resultado = f"{resultado} {miles_letras}"
+    return resultado
+
+
+def leer_millardos(numero):
+    millardo, millon = divmod(numero, 1000000)
+    miles_letras = leer_miles(millardo)
+    millones_letras = leer_millones(millon)
+    return f"{miles_letras} MILLONES {millones_letras}"
+
 
 # Conexión a la base de datos remota
 def conectar_BaseDeDatos(opcion):
@@ -34,7 +262,10 @@ def conectar_BaseDeDatos(opcion):
         fila = mycursor.fetchall()
 
         for dato in fila:
-            tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
+            n=str(dato[0])
+            if dato[6]!=0:
+                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
+            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", dato[7], dato[8]))
     
     # Agregar elemento a la base de datos
     elif opcion==2:
@@ -60,7 +291,10 @@ def conectar_BaseDeDatos(opcion):
             mycursor.execute("SELECT * FROM Transaccion WHERE `persona` LIKE '%"+busqueda_var.get()+"%'")
             fila = mycursor.fetchall()
             for dato in fila:
-                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
+                n=str(dato[0])
+                if dato[6]!=0:
+                    tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
+                else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", dato[7], dato[8]))
     
     # Limpiar busqueda de la base de datos
     elif opcion==4:
@@ -70,7 +304,10 @@ def conectar_BaseDeDatos(opcion):
         fila = mycursor.fetchall()
 
         for dato in fila:
-            tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
+            n=str(dato[0])
+            if dato[6]!=0:
+                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
+            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", dato[7], dato[8]))
 
     # Filtrar Tabla
     else:
@@ -82,15 +319,15 @@ def conectar_BaseDeDatos(opcion):
         fila = mycursor.fetchall()
 
         for dato in fila:
-            tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
-    
-
-        
+            n=str(dato[0])
+            if dato[6]!=0:
+                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
+            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", dato[7], dato[8]))
 
             
     conexion_bdd.close()
 
-c = Contenedor()
+
 
 #====================================VENTANA PRINCIPAL=========================================
 class Aplicacion(Frame):
@@ -109,7 +346,6 @@ class Aplicacion(Frame):
         self.master.resizable(width=False, height=False)
         self.master.configure(bg='#FFFFFF')
 
-        self.master.iconbitmap('abv_icon.ico')
 
 
 
@@ -138,6 +374,12 @@ class Aplicacion(Frame):
         
         tabla.configure(xscrollcommand=barra1.set, yscrollcommand=barra2.set)
 
+        estilo_tabla=ttk.Style()
+        estilo_tabla.configure('Treeview.Heading', font=('Helvetica', 11), rowheigth=40)
+        estilo_tabla.configure('Treeview', font=('Helvetica', 11), rowheigth=40)
+        estilo_tabla.map('Treeview', background=[('selected', 'silver')])
+
+
         tabla.heading('1', text="Número", anchor=W)
         tabla.heading('2', text="Tipo", anchor=W)
         tabla.heading('3', text="Asunto", anchor=W)
@@ -152,11 +394,11 @@ class Aplicacion(Frame):
         tabla.column('2', stretch=NO, minwidth=100, width=100)
         tabla.column('3', stretch=NO, minwidth=300, width=300)
         tabla.column('4', stretch=NO, minwidth=300, width=300)
-        tabla.column('5', stretch=NO, minwidth=80, width=80)
-        tabla.column('6', stretch=NO, minwidth=80, width=80)
-        tabla.column('7', stretch=NO, minwidth=300, width=300)
+        tabla.column('5', stretch=NO, minwidth=100, width=100)
+        tabla.column('6', stretch=NO, minwidth=100, width=100)
+        tabla.column('7', stretch=NO, minwidth=150, width=150)
         tabla.column('8', stretch=NO, minwidth=100, width=100)
-        tabla.column('9', stretch=NO, minwidth=300, width=300)
+        tabla.column('9', stretch=NO, minwidth=500, width=500)
 
         # Conexión con la base de datos (importación de datos)
         conectar_BaseDeDatos(1)
@@ -225,11 +467,17 @@ class VentanaSecundariaAgregarIngreso(Frame):
     def __init__(self):
         self.nuevo=Frame.__init__(self)
         self.nuevo=Toplevel(self)
+        self.nuevo.protocol("WM_DELETE_WINDOW", disable_event)
         self.nuevo.configure(bg='#FFFFFF')
         self.nuevo.title("Agregar Ingreso")
-        self.nuevo.geometry("760x660")
+        width=760
+        height=610
+        screen_width = self.master.winfo_screenwidth()
+        screen_height = self.master.winfo_screenheight()
+        x = (screen_width/2) - (width/2)
+        y = (screen_height/2) - (height/2)
+        self.nuevo.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
         self.nuevo.resizable(width=False, height=False)
-        self.nuevo.iconbitmap('abv_icon.ico')
         
         inicializar_variables(self)
         inicializar_radioBotones(self)
@@ -241,11 +489,17 @@ class VentanaSecundariaAgregarEgreso(Frame):
     def __init__(self):
         self.nuevo=Frame.__init__(self)
         self.nuevo=Toplevel(self)
+        self.nuevo.protocol("WM_DELETE_WINDOW", disable_event)
         self.nuevo.configure(bg='#FFFFFF')
         self.nuevo.title("Agregar Egreso")
-        self.nuevo.geometry("760x660")
+        width=760
+        height=610
+        screen_width = self.master.winfo_screenwidth()
+        screen_height = self.master.winfo_screenheight()
+        x = (screen_width/2) - (width/2)
+        y = (screen_height/2) - (height/2)
+        self.nuevo.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
         self.nuevo.resizable(width=False, height=False)
-        self.nuevo.iconbitmap('abv_icon.ico')
         
         inicializar_variables(self)
         inicializar_radioBotones(self)
@@ -256,8 +510,9 @@ class VentanaSecundariaAgregarEgreso(Frame):
 #================== Funciones de inicialización componentes ventanas secundarias agregar ingreso y agregar egreso ==================
 def inicializar_variables(self):
     self.asunto_var=StringVar()
+    self.asuntoOtro_var=StringVar()
     self.persona_var=StringVar()
-    self.personaNueva_var=StringVar() 
+    self.personaOtra_var=StringVar() 
     self.medio_var=StringVar()
     self.ncheque_var=StringVar()
     self.monto_var=StringVar()
@@ -277,7 +532,15 @@ def inicializar_componentes(self, tipo, medio):
     # Validación entradas vacias
     def validacion_vacia(evento):
         if medio=='Inicio' or medio=='Cheque':
-            if self.entrada2.get()=='nuevo':
+            if self.entrada1.get()=='OTRO' and self.entrada2.get()=='OTRO':
+                if len(self.entrada1_adicional.get())>0 and len(self.entrada2_adicional.get())>0 and len(self.entrada4.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
+                    self.boton2['state']=NORMAL
+                else: self.boton2['state']=DISABLED
+            elif self.entrada1.get()=='OTRO' and self.entrada2.get()!='OTRO':
+                if len(self.entrada1_adicional.get())>0 and len(self.entrada2.get())>0 and len(self.entrada4.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
+                    self.boton2['state']=NORMAL
+                else: self.boton2['state']=DISABLED
+            elif self.entrada1.get()!='OTRO' and self.entrada2.get()=='OTRO':
                 if len(self.entrada1.get())>0 and len(self.entrada2_adicional.get())>0 and len(self.entrada4.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
                     self.boton2['state']=NORMAL
                 else: self.boton2['state']=DISABLED
@@ -286,7 +549,15 @@ def inicializar_componentes(self, tipo, medio):
                     self.boton2['state']=NORMAL
                 else: self.boton2['state']=DISABLED
         else:
-            if self.entrada2.get()=='nuevo':
+            if self.entrada1.get()=='OTRO' and self.entrada2.get()=='OTRO':
+                if len(self.entrada1_adicional.get())>0 and len(self.entrada2_adicional.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
+                    self.boton2['state']=NORMAL
+                else: self.boton2['state']=DISABLED
+            elif self.entrada1.get()=='OTRO' and self.entrada2.get()!='OTRO':
+                if len(self.entrada1_adicional.get())>0 and len(self.entrada2.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
+                    self.boton2['state']=NORMAL
+                else: self.boton2['state']=DISABLED
+            elif self.entrada1.get()!='OTRO' and self.entrada2.get()=='OTRO':
                 if len(self.entrada1.get())>0 and len(self.entrada2_adicional.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
                     self.boton2['state']=NORMAL
                 else: self.boton2['state']=DISABLED
@@ -326,28 +597,36 @@ def inicializar_componentes(self, tipo, medio):
         self.contenedor6.place(x=40, y=400, width=680, height=150)
 
         # Entradas
-        def comboboxclick(event):
-            self.entrada2_adicional=Entry(self.contenedor2, textvariable=self.personaNueva_var, font=("Helvetica", 13))
-            self.entrada2_adicional.place(x=330, y=5, width=310, height=32)
-            if self.persona_var.get() !='nuevo':
-                self.entrada2_adicional.config(state=DISABLED)
+        def comboboxclick1(evento):
+            if self.asunto_var.get() !='OTRO':
+                self.entrada1_adicional.place_forget()
             else:
-                self.entrada2_adicional.config(state=NORMAL)
+                self.entrada1_adicional.place(x=330, y=5, width=310, height=32)
+        self.entrada1=ttk.Combobox(self.contenedor1, textvariable=self.asunto_var, font=("Helvetica", 13), state='readonly')
+        if tipo=="Ingreso":
+            self.entrada1['values']=lista_asunto_ingreso
+        else:
+            self.entrada1['values']=lista_asunto_egreso
+        self.entrada1.bind("<<ComboboxSelected>>", comboboxclick1)
+        self.entrada1.place(x=10, y=5, width=310, height=32)
+        self.entrada1_adicional=Entry(self.contenedor1, textvariable=self.asuntoOtro_var, font=("Helvetica", 13))
 
-        self.entrada1=Entry(self.contenedor1, textvariable=self.asunto_var, font=("Helvetica", 13))
-        self.entrada1.place(x=10, y=5, width=660, height=32)
+        def comboboxclick2(evento):
+            if self.persona_var.get() !='OTRO':
+                self.entrada2_adicional.place_forget()
+            else:
+                self.entrada2_adicional.place(x=330, y=5, width=310, height=32)
 
         self.entrada2=ttk.Combobox(self.contenedor2, textvariable=self.persona_var, font=("Helvetica", 13), state='readonly')
         if tipo=="Ingreso":
-            c.agregarRecibidoDe('nuevo')
-            self.entrada2['values']=c.lista_recibido_de
+            self.entrada2['values']=lista_recibido_de
         else:
-            c.agregarEnviadoA('nuevo')
-            self.entrada2['values']=c.lista_enviado_a
-        self.entrada2.bind("<<ComboboxSelected>>", comboboxclick)
+            self.entrada2['values']=lista_enviado_a
+        self.entrada2.bind("<<ComboboxSelected>>", comboboxclick2)
         self.entrada2.place(x=10, y=5, width=310, height=32)
+        self.entrada2_adicional=Entry(self.contenedor2, textvariable=self.personaOtra_var, font=("Helvetica", 13))
 
-        self.entrada3=DateEntry(self.contenedor3, width=50)
+        self.entrada3=dateentry.DateEntry(self.contenedor3, state='readonly', locale='es_CL', date_pattern='dd-mm-yyyy', width=50)
         self.entrada3.place(x=10, y=5, width=310, height=32)
         self.entrada3.config(headersbackground="#E62B0A", headersforeground="#ffffff", foreground="#000000", background="#ffffff")
 
@@ -368,16 +647,16 @@ def inicializar_componentes(self, tipo, medio):
         # CheckBox
         self.checkBox=Checkbutton(self.nuevo, text="¿Desea imprimir los datos del "+tipo+" en pdf?", variable=self.imprimir, onvalue=TRUE, offvalue=FALSE, font=("Helvetica", 12))
         self.checkBox.configure(bg='#FFFFFF')
-        self.checkBox.place(x=40, y=600)
+        self.checkBox.place(x=40, y=570)
 
         # Botones
         self.boton1=Button(self.nuevo, text="Regresar", command=lambda:cerrar_ventanaSecundaria(self), font=("Helvetica", 13), borderwidth=0)
         self.boton1.configure(bg='#FFD1A5')
-        self.boton1.place(x=500, y=600)
+        self.boton1.place(x=500, y=570)
 
         self.boton2=Button(self.nuevo, text="Agregar", command=lambda:crearTransaccion(self, tipo), font=("Helvetica", 13), borderwidth=0)
         self.boton2.configure(bg='#FFD1A5')
-        self.boton2.place(x=630, y=600)
+        self.boton2.place(x=630, y=570)
         self.boton2['state']=DISABLED
     
     elif medio=='Cheque':
@@ -421,8 +700,10 @@ def crearTransaccion(self, t):
     global monto
     global descripcion
     asunto=self.entrada1.get()
+    if asunto=='OTRO':
+        asunto=self.entrada1_adicional.get()
     persona=self.entrada2.get()
-    if persona=='nuevo':
+    if persona=='OTRO':
         persona=self.entrada2_adicional.get()
     fecha=self.entrada3.get_date()
     medio=self.medio_var.get()
@@ -435,80 +716,82 @@ def crearTransaccion(self, t):
     
     conectar_BaseDeDatos(2)
     if self.imprimir.get()==TRUE:
-        documento=crear_documento()
-        imprimir_documento(documento)
+        crear_documento()
+        imprimir_documento()
     cerrar_ventanaSecundaria(self)
+
+def findfile(name, path):
+    for dirpath, dirname, filename in os.walk(path):
+        if name in filename:
+            return os.path.join(dirpath, name)
     
 
 def crear_documento():
-    plantilla_documento = Path(__file__).parent / "plantilla_documento.docx"
-    documento = DocxTemplate(plantilla_documento)
-
-    text_persona=''
     if tipo=='Ingreso':
-        text_persona="RECIBIDO DE"
-    else: text_persona="ENVIADO A"
+        filepath = findfile("plantilla_documento_ingreso.docx", "\\")
+        plantilla_documento = Path(filepath).parent / "plantilla_documento_ingreso.docx"
+    else:
+        filepath = findfile("plantilla_documento_egreso.docx", "\\")
+        plantilla_documento = Path(filepath).parent / "plantilla_documento_egreso.docx"
+    documento = DocxTemplate(plantilla_documento)
 
     f=Formato()
     monto_en_palabras=f.numero_a_moneda_sunat(monto)
 
+    n=str(numero)
+
 
     if medio=='Cheque':
         context = {
-            "NUMERO": numero,
-            "TIPO": tipo,
+            "NUMERO": n[len(n)-5]+'-'+n[-4:],
             "ASUNTO": asunto,
-            "ETIQUETA_P": text_persona,
             "PERSONA": persona,
             "FECHA": fecha.strftime("%d-%m-%Y"),
             "CHEQUE": ncheque,
             "E": "",
             "T": "",
-            "MONTO": monto,
+            "MONTO": '{:,}'.format(monto).replace(',','.'),
             "MONTO_PALABRAS": monto_en_palabras,
             "DESCRIPCION": descripcion,
         }
     elif medio=='Efectivo':
         context = {
-            "NUMERO": numero,
-            "TIPO": tipo,
+            "NUMERO": n[len(n)-5]+'-'+n[-4:],
             "ASUNTO": asunto,
-            "ETIQUETA_P": text_persona,
             "PERSONA": persona,
             "FECHA": fecha.strftime("%d-%m-%Y"),
             "CHEQUE": "",
             "E": "X",
             "T": "",
-            "MONTO": monto,
+            "MONTO": '{:,}'.format(monto).replace(',','.'),
             "MONTO_PALABRAS": monto_en_palabras,
             "DESCRIPCION": descripcion,
         }
     else:
         context = {
-            "NUMERO": numero,
-            "TIPO": tipo,
+            "NUMERO": n[len(n)-5]+'-'+n[-4:],
             "ASUNTO": asunto,
-            "ETIQUETA_P": text_persona,
             "PERSONA": persona,
             "FECHA": fecha.strftime("%d-%m-%Y"),
             "CHEQUE": "",
             "E": "",
             "T": "X",
-            "MONTO": monto,
+            "MONTO": '{:,}'.format(monto).replace(',','.'),
             "MONTO_PALABRAS": monto_en_palabras,
             "DESCRIPCION": descripcion,
         }
 
     documento.render(context)
-    documento.save(Path(__file__).parent / f"{numero}_{tipo}.docx")
+    documento.save(Path(filepath).parent / f"{numero}_{tipo}.docx")
     word_app = client.Dispatch("Word.Application")
-    rod =os.path.dirname(os.path.abspath(__file__))
+    global rod
+    rod =os.path.dirname(os.path.abspath(filepath))
     doc = word_app.Documents.Open(rod+"\\"+str(numero)+"_"+tipo+".docx")
     doc.SaveAs(rod+"\\"+str(numero)+"_"+tipo+".pdf", FileFormat=17)
     word_app.Quit()
-    return doc
 
-def imprimir_documento(documento):
+# Imprime el documento en la impresora predeterminada
+def imprimir_documento():
     name = win32print.GetDefaultPrinter()
     printdefaults = {"DesiredAccess": win32print.PRINTER_ALL_ACCESS}
     handle = win32print.OpenPrinter(name, printdefaults)
@@ -518,15 +801,21 @@ def imprimir_documento(documento):
     win32print.SetPrinter(handle, level, attributes, 0)
     win32print.GetPrinter(handle, level)['pDevMode'].Duplex
     
-    win32api.ShellExecute(0, "print", str(numero)+"_"+tipo+".pdf", None,  ".",  0)
+    win32api.ShellExecute(0, "print", rod+"\\"+str(numero)+"_"+tipo+".pdf", None,  ".",  0)
     win32print.ClosePrinter(handle)
     
 
+def disable_event():
+   pass
+
 def cerrar_ventanaSecundaria(self):
-    c.eliminarRecibidoDe('nuevo')
-    c.eliminarEnviadoA('nuevo')
     self.destroy()
     self.master.deiconify()
 
 app=Aplicacion()
 app.mainloop()
+
+
+
+
+
