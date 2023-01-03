@@ -11,7 +11,6 @@ import mysql.connector
 # Librerías edición docx
 from pathlib import Path
 from docxtpl import DocxTemplate
-from win32com import client
 import os
 
 
@@ -76,7 +75,7 @@ lista_enviado_a=[
     'OTRO'
 ]
 
-
+#------------ SECCIÓN FUNCIÓN MONTO EN PALABRAS -------------------------------
 MAX_NUMERO = 999999999999
 
 UNIDADES = (
@@ -249,18 +248,21 @@ def leer_millardos(numero):
     return f"{miles_letras} MILLONES {millones_letras}"
 
 
-# Conexión a la base de datos remota
+#---------------------------- Conexión a la base de datos remota ----------------------
 def conectar_BaseDeDatos(opcion):
-    conexion_bdd = mysql.connector.connect(user='hpn9tpk1dry0lmzu7377', password='pscale_pw_z8FWTgp8gcRZJUEmtlO1GTY2mep54VHI46hlq7lxyOm',
-                                    host='us-east.connect.psdb.cloud',
-                                    database='administracion-ingresos-egresos')
+    conexion_bdd = mysql.connector.connect(
+        user='hpn9tpk1dry0lmzu7377', # Usuario
+        password='pscale_pw_z8FWTgp8gcRZJUEmtlO1GTY2mep54VHI46hlq7lxyOm', # Contraseña
+        host='us-east.connect.psdb.cloud', # Host
+        database='administracion-ingresos-egresos') # Nombre de la base de datos
     
     # Importar la base de datos
     if opcion==1:
         mycursor = conexion_bdd.cursor()
-        mycursor.execute("SELECT * FROM Transaccion")
+        mycursor.execute("SELECT * FROM Transaccion") # Sentencia MYSQL: Se seleccionan de todos los elementos de la base de datos
         fila = mycursor.fetchall()
 
+        # Se insertan en la tabla todos los elementos de la base de datos
         for dato in fila:
             n=str(dato[0])
             if dato[6]!=0:
@@ -270,12 +272,12 @@ def conectar_BaseDeDatos(opcion):
     # Agregar elemento a la base de datos
     elif opcion==2:
         mycursor=conexion_bdd.cursor()
-        mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE CAST(numero AS CHAR(10)) LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipo)+"'")
+        mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE CAST(numero AS CHAR(10)) LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipo)+"'") # Sentencia MYSQL: Se cuentan todos los ingresos o egresos de un mismo año
         fila = mycursor.fetchall()
         global numero
         numero = int(str(int(fila[0][0])+1)+str(fecha.year))
 
-        sql = "INSERT INTO Transaccion (numero, tipo, asunto, persona, fecha, medio, nCheque, monto, descripcion) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        sql = "INSERT INTO Transaccion (numero, tipo, asunto, persona, fecha, medio, nCheque, monto, descripcion) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)" # Sentenica MYSQL: Se inserta la fila nueva con sus datos
         valores = (numero, tipo, asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion)
 
 
@@ -283,6 +285,7 @@ def conectar_BaseDeDatos(opcion):
         mycursor.execute(sql, valores)
         conexion_bdd.commit()
 
+        # El elemento nuevo se inserta en la tabla para mantener ésta actualizada
         n=str(numero)
         if ncheque!=0:
             tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, monto, descripcion))
@@ -290,11 +293,13 @@ def conectar_BaseDeDatos(opcion):
 
     # Buscar en la base de datos por persona (Recibido de:/Enviado a:)
     elif opcion==3:
-        if busqueda_var.get() != "":
-            tabla.delete(*tabla.get_children())
+        # Se hace la busqueda sí se ingreso una cadena de largo mayor a 2 carácteres 
+        if len(busqueda_var.get())>2:
+            tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
             mycursor = conexion_bdd.cursor()
-            mycursor.execute("SELECT * FROM Transaccion WHERE `persona` LIKE '%"+busqueda_var.get()+"%'")
+            mycursor.execute("SELECT * FROM Transaccion WHERE `persona` LIKE '%"+busqueda_var.get()+"%'") # Sentencia MYSQL: Se seleccionan los elementos cuya persona contenga carácteres de la ingresada
             fila = mycursor.fetchall()
+            # Se insertan en la tabla los datos de la búsqueda
             for dato in fila:
                 n=str(dato[0])
                 if dato[6]!=0:
@@ -303,11 +308,13 @@ def conectar_BaseDeDatos(opcion):
     
     # Limpiar busqueda de la base de datos
     elif opcion==4:
-        tabla.delete(*tabla.get_children())
+        tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
+        tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         mycursor = conexion_bdd.cursor()
-        mycursor.execute("SELECT * FROM Transaccion")
+        mycursor.execute("SELECT * FROM Transaccion") # Sentencia MYSQL: Se seleccionan de todos los elementos de la base de datos
         fila = mycursor.fetchall()
 
+        # Se insertan en la tabla todos los elementos de la base de datos
         for dato in fila:
             n=str(dato[0])
             if dato[6]!=0:
@@ -316,13 +323,19 @@ def conectar_BaseDeDatos(opcion):
 
     # Filtrar Tabla
     else:
-        tabla.delete(*tabla.get_children())
+        tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
         mycursor = conexion_bdd.cursor()
         if filtroTipo_var.get()!='Todos':
-            mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"'")
-        else: mycursor.execute("SELECT * FROM Transaccion")
+            mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"'") # Sentencia MYSQL: Se seleccionan los elementos del tipo seleccionado
+            if filtroTipo_var.get()=='Ingreso':
+                tabla.heading('4', text="Recibido de", anchor=W)
+            else: tabla.heading('4', text="Enviado a", anchor=W)
+        else:
+            mycursor.execute("SELECT * FROM Transaccion")
+            tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         fila = mycursor.fetchall()
-
+        
+        # Se insertan en la tabla los datos seleccionados
         for dato in fila:
             n=str(dato[0])
             if dato[6]!=0:
@@ -330,7 +343,7 @@ def conectar_BaseDeDatos(opcion):
             else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", dato[7], dato[8]))
 
             
-    conexion_bdd.close()
+    conexion_bdd.close() # Se cierra la conexión a la base de datos remota
 
 
 
@@ -341,12 +354,10 @@ class Aplicacion(Frame):
         Frame.__init__(self)
         self.pack()
         self.master.title("Sistema de Caja")
-        width = 1200
-        height = 675
-        screen_width = self.master.winfo_screenwidth()
-        screen_height = self.master.winfo_screenheight()
-        x = (screen_width/2) - (width/2)
-        y = (screen_height/2) - (height/2)
+        width = 1200 # ancho de la ventana
+        height = 675 # alto de la ventana
+        x = 20
+        y = 20
         self.master.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
         self.master.resizable(width=False, height=False)
         self.master.configure(bg='#FFFFFF')
@@ -354,7 +365,7 @@ class Aplicacion(Frame):
 
 
 
-        # Label Frames
+        # Frames: Contenedores dentro de la ventana que contienen los elementos
         contenedor1=LabelFrame(self.master, text="Buscador Persona", bg='#8297BC', fg='#FFFFFF')
         contenedor1.place(x=40, y=10, width=575, height=75)
         contenedor2=LabelFrame(self.master, text="Operaciones", bg='#E64611', fg='#FFFFFF')
@@ -477,10 +488,8 @@ class VentanaSecundariaAgregarIngreso(Frame):
         self.nuevo.title("Agregar Ingreso")
         width=760
         height=610
-        screen_width = self.master.winfo_screenwidth()
-        screen_height = self.master.winfo_screenheight()
-        x = (screen_width/2) - (width/2)
-        y = (screen_height/2) - (height/2)
+        x = 20
+        y = 20
         self.nuevo.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
         self.nuevo.resizable(width=False, height=False)
         
@@ -499,10 +508,8 @@ class VentanaSecundariaAgregarEgreso(Frame):
         self.nuevo.title("Agregar Egreso")
         width=760
         height=610
-        screen_width = self.master.winfo_screenwidth()
-        screen_height = self.master.winfo_screenheight()
-        x = (screen_width/2) - (width/2)
-        y = (screen_height/2) - (height/2)
+        x = 20
+        y = 20
         self.nuevo.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
         self.nuevo.resizable(width=False, height=False)
         
@@ -719,18 +726,19 @@ def crearTransaccion(self, t):
     descripcion=self.entrada6.get("1.0", "end-1c")
     tipo=t
     
-    conectar_BaseDeDatos(2)
+    conectar_BaseDeDatos(2) # Conexión a la base de datos (agregar elemento)
     if self.imprimir.get()==TRUE:
         crear_documento()
         imprimir_documento()
     cerrar_ventanaSecundaria(self)
 
+# Función que busca la ruta del archivo 
 def findfile(name, path):
     for dirpath, dirname, filename in os.walk(path):
         if name in filename:
             return os.path.join(dirpath, name)
     
-
+# Función que crea el documento con los datos el elemento nuevo a partir de una plantilla
 def crear_documento():
     if tipo=='Ingreso':
         filepath = findfile("plantilla_documento_ingreso.docx", "\\")
@@ -791,7 +799,7 @@ def crear_documento():
     global rod
     rod =os.path.dirname(os.path.abspath(filepath))
 
-# Imprime el documento en la impresora predeterminada
+# Función que Imprime el documento en la impresora predeterminada
 def imprimir_documento():
     name = win32print.GetDefaultPrinter()
     printdefaults = {"DesiredAccess": win32print.PRINTER_ALL_ACCESS}
