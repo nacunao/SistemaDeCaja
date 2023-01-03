@@ -283,6 +283,11 @@ def conectar_BaseDeDatos(opcion):
         mycursor.execute(sql, valores)
         conexion_bdd.commit()
 
+        n=str(numero)
+        if ncheque!=0:
+            tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, monto, descripcion))
+        else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", monto, descripcion))
+
     # Buscar en la base de datos por persona (Recibido de:/Enviado a:)
     elif opcion==3:
         if busqueda_var.get() != "":
@@ -645,7 +650,7 @@ def inicializar_componentes(self, tipo, medio):
 
 
         # CheckBox
-        self.checkBox=Checkbutton(self.nuevo, text="¿Desea imprimir los datos del "+tipo+" en pdf?", variable=self.imprimir, onvalue=TRUE, offvalue=FALSE, font=("Helvetica", 12))
+        self.checkBox=Checkbutton(self.nuevo, text="¿Desea imprimir los datos del "+tipo+"?", variable=self.imprimir, onvalue=TRUE, offvalue=FALSE, font=("Helvetica", 12))
         self.checkBox.configure(bg='#FFFFFF')
         self.checkBox.place(x=40, y=570)
 
@@ -783,12 +788,8 @@ def crear_documento():
 
     documento.render(context)
     documento.save(Path(filepath).parent / f"{numero}_{tipo}.docx")
-    word_app = client.Dispatch("Word.Application")
     global rod
     rod =os.path.dirname(os.path.abspath(filepath))
-    doc = word_app.Documents.Open(rod+"\\"+str(numero)+"_"+tipo+".docx")
-    doc.SaveAs(rod+"\\"+str(numero)+"_"+tipo+".pdf", FileFormat=17)
-    word_app.Quit()
 
 # Imprime el documento en la impresora predeterminada
 def imprimir_documento():
@@ -801,7 +802,7 @@ def imprimir_documento():
     win32print.SetPrinter(handle, level, attributes, 0)
     win32print.GetPrinter(handle, level)['pDevMode'].Duplex
     
-    win32api.ShellExecute(0, "print", rod+"\\"+str(numero)+"_"+tipo+".pdf", None,  ".",  0)
+    win32api.ShellExecute(0, "print", rod+"\\"+str(numero)+"_"+tipo+".docx", None,  ".",  0)
     win32print.ClosePrinter(handle)
     
 
