@@ -1,3 +1,4 @@
+import sys
 
 # Librerías Interfaz Gráfica Tkinter
 from tkinter import *
@@ -361,6 +362,7 @@ class Aplicacion(Frame):
         self.master.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
         self.master.resizable(width=False, height=False)
         self.master.configure(bg='#FFFFFF')
+        self.master.iconbitmap(sys.executable)
 
 
 
@@ -492,6 +494,7 @@ class VentanaSecundariaAgregarIngreso(Frame):
         y = 20
         self.nuevo.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
         self.nuevo.resizable(width=False, height=False)
+        self.nuevo.iconbitmap(sys.executable)
         
         inicializar_variables(self)
         inicializar_radioBotones(self)
@@ -512,6 +515,7 @@ class VentanaSecundariaAgregarEgreso(Frame):
         y = 20
         self.nuevo.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
         self.nuevo.resizable(width=False, height=False)
+        self.nuevo.iconbitmap(sys.executable)
         
         inicializar_variables(self)
         inicializar_radioBotones(self)
