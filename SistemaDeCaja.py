@@ -1,10 +1,16 @@
+# DESARROLLADO POR NICOLÁS ACUÑA
+
 import sys
+import os
+from datetime import *
+import locale
 
 # Librerías Interfaz Gráfica Tkinter
 from tkinter import *
 from tkinter import ttk
-from tkcalendar import dateentry 
-from datetime import *
+from tkinter import messagebox
+from tkcalendar import dateentry
+
 
 # Librería conexión base de datos por medio de mysql
 import mysql.connector
@@ -12,23 +18,18 @@ import mysql.connector
 # Librerías edición docx
 from pathlib import Path
 from docxtpl import DocxTemplate
-import os
 
 
 # Librerías impresión
 from win32 import win32print
 from win32 import win32api
 
+
 # LISTAS ASUNTO
 lista_asunto_ingreso=[
     'ARRIENDO',
-    'ARRIENDO CONFITERIA EL FORTÍN',
-    'ARRIENDO ACHAVAR',
-    'ARRIENDO RESTAURANT LA VERTIENTE',
-    'ARRIENDO RESTAURANT KOPPA',
-    'ARRIENDO RESTAURANT CLAUDIA',
-    'ARRIENDO SEGUT',
-    'ARRIENDO CAFETERIA',
+    'ARRIENDO SCOUT',
+    'ARRIENDO EVENTO',
     'ARRIENDO FIN DE SEMANA',
     'PASE JUGADOR',
     'PRÉSTAMO JUGADOR',
@@ -63,16 +64,23 @@ lista_recibido_de=[
     'LIN DIAZ'
     'SAMUEL BERNAL',
     'ERIKA BERNAL',
+    'SEÑOR PANELLI',
     'MUNICIPALIDAD',
     'PUERTO VALPARAISO',
     'PARTICULAR',
     'OTRO']
 lista_enviado_a=[
-    'PREVIRED'
+    'PREVIRED',
     'TESORERÍA GENERAL DE LA REPÚBLICA',
     'CHILQUINTA',
     'GASVALPO',
     'ESVAL',
+    'PERSONAL',
+    'ASOCIACIÓN',
+    'SECRETARIA',
+    'CLAUDIO OSORIO',
+    'VERONICA SAMIT',
+    'BANCO SANTANDER',
     'OTRO'
 ]
 
@@ -248,17 +256,31 @@ def leer_millardos(numero):
     millones_letras = leer_millones(millon)
     return f"{miles_letras} MILLONES {millones_letras}"
 
+# DATOS DE LA BASE DE DATOS REMOTA
+DB_HOST = 'us-east.connect.psdb.cloud' 
+DB_USER = 'hpn9tpk1dry0lmzu7377' 
+DB_USER_PASSWORD = 'pscale_pw_z8FWTgp8gcRZJUEmtlO1GTY2mep54VHI46hlq7lxyOm' 
+DB_NAME = 'administracion-ingresos-egresos'
+
 
 #---------------------------- Conexión a la base de datos remota ----------------------
 def conectar_BaseDeDatos(opcion):
     conexion_bdd = mysql.connector.connect(
-        user='hpn9tpk1dry0lmzu7377', # Usuario
-        password='pscale_pw_z8FWTgp8gcRZJUEmtlO1GTY2mep54VHI46hlq7lxyOm', # Contraseña
-        host='us-east.connect.psdb.cloud', # Host
-        database='administracion-ingresos-egresos') # Nombre de la base de datos
-    
+        user=DB_USER, # Usuario
+        password=DB_USER_PASSWORD, # Contraseña
+        host=DB_HOST, # Host
+        database=DB_NAME) # Nombre de la base de datos
+
+    # Obtener número de folio
+    if opcion==0:
+        mycursor=conexion_bdd.cursor()
+        mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE CAST(numero AS CHAR(10)) LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipoT)+"'") # Sentencia MYSQL: Se cuentan todos los ingresos o egresos de un mismo año
+        fila = mycursor.fetchall()
+        global numero
+        numero = int(str(int(fila[0][0])+1)+str(fecha.year))
+
     # Importar la base de datos
-    if opcion==1:
+    elif opcion==1:
         mycursor = conexion_bdd.cursor()
         mycursor.execute("SELECT * FROM Transaccion") # Sentencia MYSQL: Se seleccionan de todos los elementos de la base de datos
         fila = mycursor.fetchall()
@@ -267,17 +289,11 @@ def conectar_BaseDeDatos(opcion):
         for dato in fila:
             n=str(dato[0])
             if dato[6]!=0:
-                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
-            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", dato[7], dato[8]))
-    
+                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+
     # Agregar elemento a la base de datos
     elif opcion==2:
-        mycursor=conexion_bdd.cursor()
-        mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE CAST(numero AS CHAR(10)) LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipo)+"'") # Sentencia MYSQL: Se cuentan todos los ingresos o egresos de un mismo año
-        fila = mycursor.fetchall()
-        global numero
-        numero = int(str(int(fila[0][0])+1)+str(fecha.year))
-
         sql = "INSERT INTO Transaccion (numero, tipo, asunto, persona, fecha, medio, nCheque, monto, descripcion) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)" # Sentenica MYSQL: Se inserta la fila nueva con sus datos
         valores = (numero, tipo, asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion)
 
@@ -289,8 +305,8 @@ def conectar_BaseDeDatos(opcion):
         # El elemento nuevo se inserta en la tabla para mantener ésta actualizada
         n=str(numero)
         if ncheque!=0:
-            tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, monto, descripcion))
-        else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", monto, descripcion))
+            tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
+        else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
 
     # Buscar en la base de datos por persona (Recibido de:/Enviado a:)
     elif opcion==3:
@@ -304,8 +320,8 @@ def conectar_BaseDeDatos(opcion):
             for dato in fila:
                 n=str(dato[0])
                 if dato[6]!=0:
-                    tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
-                else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", dato[7], dato[8]))
+                    tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+                else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
     
     # Limpiar busqueda de la base de datos
     elif opcion==4:
@@ -319,11 +335,11 @@ def conectar_BaseDeDatos(opcion):
         for dato in fila:
             n=str(dato[0])
             if dato[6]!=0:
-                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
-            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", dato[7], dato[8]))
+                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
 
     # Filtrar Tabla
-    else:
+    elif opcion==5:
         tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
         mycursor = conexion_bdd.cursor()
         if filtroTipo_var.get()!='Todos':
@@ -340,373 +356,266 @@ def conectar_BaseDeDatos(opcion):
         for dato in fila:
             n=str(dato[0])
             if dato[6]!=0:
-                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], dato[7], dato[8]))
-            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", dato[7], dato[8]))
+                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
 
-            
+    # Editar elemento
+    else:
+        sql = "UPDATE Transaccion SET `asunto` = %s, `persona` = %s, `nCheque` = %s, `monto` = %s, `descripcion` = %s WHERE `numero` = %s AND `tipo` = %s"
+        valores = (asunto, persona, ncheque, monto, descripcion, numero, tipo)
+        
+        mycursor = conexion_bdd.cursor()
+        mycursor.execute(sql, valores)
+        conexion_bdd.commit()
+
+        n = str(numero)
+
+        if medio=='Cheque':
+            tabla.item(elemento, values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
+        else: tabla.item(elemento, values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
+
     conexion_bdd.close() # Se cierra la conexión a la base de datos remota
 
+# RESPALDO DE LA BASE DE DATOS AL CERRAR EL PROGRAMA
+def backup_database():
+    filepath = findfile("plantilla_documento_ingreso.docx", "\\")
+    BACKUP_DIR_NAME = str(Path(filepath).parent)
+    FILE_PREFIX = "respaldo_"
+    FILE_SUFFIX_DATE_FORMAT = "%d-%m-%Y_%H-%M-%S"
+
+    timestamp = datetime.now().strftime(FILE_SUFFIX_DATE_FORMAT)
+    backup_filename = BACKUP_DIR_NAME+"\\"+FILE_PREFIX+timestamp+".sql"
+
+    os.system("mysqldump -u " + DB_USER + " -p" + DB_USER_PASSWORD + " -h" + DB_HOST + " " + DB_NAME + "  > "+backup_filename)
+
+#================== Funciones de inicialización componentes secciones agregar ingreso y agregar egreso ==================
+def inicializar_variables():
+    global numero_var
+    global asunto_var
+    global asuntoOtro_var
+    global persona_var
+    global personaOtra_var 
+    global medio_var
+    global ncheque_var
+    global monto_var
+    global descripcion_var
+    global imprimir
+    numero_var=StringVar()
+    asunto_var=StringVar()
+    asuntoOtro_var=StringVar()
+    persona_var=StringVar()
+    personaOtra_var=StringVar() 
+    medio_var=StringVar()
+    ncheque_var=StringVar()
+    monto_var=StringVar()
+    descripcion_var=StringVar()
+    imprimir=BooleanVar()
+
+def inicializar_componentes(tipo):
+    global contenedor0
+    global contenedor1
+    global contenedor2
+    global contenedor3
+    global contenedor4
+    global contenedor5
+    global contenedor6
+
+    global entrada0
+    global entrada1
+    global entrada1_adicional
+    global entrada2
+    global entrada2_adicional
+    global entrada3
+    global entrada4
+    global entrada5
+    global entrada6
+
+    global botonCancelar
+    global botonGuardar
 
 
-#====================================VENTANA PRINCIPAL=========================================
-class Aplicacion(Frame):
-
-    def __init__(self):
-        Frame.__init__(self)
-        self.pack()
-        self.master.title("Sistema de Caja")
-        width = 1200 # ancho de la ventana
-        height = 675 # alto de la ventana
-        x = 20
-        y = 20
-        self.master.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
-        self.master.resizable(width=False, height=False)
-        self.master.configure(bg='#FFFFFF')
-        self.master.iconbitmap(sys.executable)
-
-
-
-
-        # Frames: Contenedores dentro de la ventana que contienen los elementos
-        contenedor1=LabelFrame(self.master, text="Buscador Persona", bg='#8297BC', fg='#FFFFFF')
-        contenedor1.place(x=40, y=10, width=575, height=75)
-        contenedor2=LabelFrame(self.master, text="Operaciones", bg='#E64611', fg='#FFFFFF')
-        contenedor2.place(x=40, y=580, width=375, height=75)
-        contenedorTabla=Frame(self.master, bg='#EDB712')
-        contenedorTabla.place(x=40, y=120, width=1120, height=420)
-        contenedorFiltroTipo=LabelFrame(self.master, text="Filtrar por tipo", bg='#C5A97B', fg='#FFFFFF')
-        contenedorFiltroTipo.place(x=630, y=10, width=220, height=75)
-        
-        # Tabla
-        global tabla
-        global barra1
-        global barra2
-        tabla = ttk.Treeview(contenedorTabla, selectmode='extended')
-        tabla.place(x=10, y=10, width=1080, height=380)
-        tabla['columns']=("1", "2", "3", "4", "5", "6", "7", "8", "9")
-        tabla['show']='headings'
-        barra1=Scrollbar(contenedorTabla, orient=HORIZONTAL, command=tabla.xview)
-        barra1.place(x=10, y=395, width=1080)
-        barra2=Scrollbar(contenedorTabla, orient=VERTICAL, command=tabla.yview)
-        barra2.place(x=1095, y=10, height=380)
-        
-        tabla.configure(xscrollcommand=barra1.set, yscrollcommand=barra2.set)
-
-        estilo_tabla=ttk.Style()
-        estilo_tabla.configure('Treeview.Heading', font=('Helvetica', 11), rowheigth=40)
-        estilo_tabla.configure('Treeview', font=('Helvetica', 11), rowheigth=40)
-        estilo_tabla.map('Treeview', background=[('selected', 'silver')])
-
-
-        tabla.heading('1', text="Número", anchor=W)
-        tabla.heading('2', text="Tipo", anchor=W)
-        tabla.heading('3', text="Asunto", anchor=W)
-        tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
-        tabla.heading('5', text="Fecha", anchor=W)
-        tabla.heading('6', text="Medio", anchor=W)
-        tabla.heading('7', text="Número de Cheque", anchor=W)
-        tabla.heading('8', text="Monto", anchor=W)
-        tabla.heading('9', text="Por concepto de", anchor=W)
-        
-        tabla.column('1', stretch=NO, minwidth=80, width=80)
-        tabla.column('2', stretch=NO, minwidth=100, width=100)
-        tabla.column('3', stretch=NO, minwidth=300, width=300)
-        tabla.column('4', stretch=NO, minwidth=300, width=300)
-        tabla.column('5', stretch=NO, minwidth=100, width=100)
-        tabla.column('6', stretch=NO, minwidth=100, width=100)
-        tabla.column('7', stretch=NO, minwidth=150, width=150)
-        tabla.column('8', stretch=NO, minwidth=100, width=100)
-        tabla.column('9', stretch=NO, minwidth=500, width=500)
-
-        # Conexión con la base de datos (importación de datos)
-        conectar_BaseDeDatos(1)
-
-        global busqueda_var
-        busqueda_var=StringVar()
-
-        def habilitar_boton(evento):
-            if len(entrada1.get())>0:
-                boton1['state']=NORMAL
-            else: boton1['state']=DISABLED
-        # Entradas
-        global entrada1
-        entrada1=Entry(contenedor1, textvariable=busqueda_var)
-        entrada1.place(x=20, y=10, width=350, height=32)
-        self.master.bind('<KeyRelease>', habilitar_boton)
-        
-        
-        global filtroTipo_var
-        filtroTipo_var=StringVar(value='Todos')
-
-        # Combobox
-        combo_tipo=ttk.Combobox(contenedorFiltroTipo, values=['Todos', 'Ingreso', 'Egreso'], textvariable=filtroTipo_var, font=("Helvetica", 12), state='readonly')
-        combo_tipo.place(x=10, y=10, width=200)
-        combo_tipo.bind('<<ComboboxSelected>>', self.filtrar_tabla)
-
-
-        # Botones
-        boton1=Button(contenedor1, text="Buscar", command=self.buscar_persona, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
-        boton1.place(x=400, y=10)
-        boton1['state']=DISABLED
-        boton2=Button(contenedor1, text="Limpiar", command=self.limpiar_tabla, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
-        boton2.place(x=475, y=10)
-        boton3=Button(contenedor2, text="Agregar Ingreso", command=self.abrir_ventanaSecundaria1, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
-        boton3.place(x=20, y=10)
-        boton4=Button(contenedor2, text="Agregar Egreso", command=self.abrir_ventanaSecundaria2, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
-        boton4.place(x=220, y=10)
-
-
-
-    def abrir_ventanaSecundaria1(self):
-        self.master.withdraw()
-        self.nuevaVentana=VentanaSecundariaAgregarIngreso()
-
-    def abrir_ventanaSecundaria2(self):
-        self.master.withdraw()
-        self.nuevaVentana=VentanaSecundariaAgregarEgreso()
-    
-    def buscar_persona(self):
-        conectar_BaseDeDatos(3)
-
-    def limpiar_tabla(self):
-        entrada1.delete(0, 'end')
-        conectar_BaseDeDatos(4)
-
-    def filtrar_tabla(self, evento):
-        conectar_BaseDeDatos(5)
-
-    def actualizar_tabla(self):
-        conectar_BaseDeDatos(4)
-
-
-
-#=================================VENTANA SECUNDARIA AGREGAR INGRESO===========================
-class VentanaSecundariaAgregarIngreso(Frame):
-    def __init__(self):
-        self.nuevo=Frame.__init__(self)
-        self.nuevo=Toplevel(self)
-        self.nuevo.protocol("WM_DELETE_WINDOW", disable_event)
-        self.nuevo.configure(bg='#FFFFFF')
-        self.nuevo.title("Agregar Ingreso")
-        width=760
-        height=610
-        x = 20
-        y = 20
-        self.nuevo.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
-        self.nuevo.resizable(width=False, height=False)
-        self.nuevo.iconbitmap(sys.executable)
-        
-        inicializar_variables(self)
-        inicializar_radioBotones(self)
-        inicializar_componentes(self, "Ingreso", "Inicio")
-
-
-#===============================VENTANA SECUNDARIA AGREGAR EGRESO==============================
-class VentanaSecundariaAgregarEgreso(Frame):
-    def __init__(self):
-        self.nuevo=Frame.__init__(self)
-        self.nuevo=Toplevel(self)
-        self.nuevo.protocol("WM_DELETE_WINDOW", disable_event)
-        self.nuevo.configure(bg='#FFFFFF')
-        self.nuevo.title("Agregar Egreso")
-        width=760
-        height=610
-        x = 20
-        y = 20
-        self.nuevo.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
-        self.nuevo.resizable(width=False, height=False)
-        self.nuevo.iconbitmap(sys.executable)
-        
-        inicializar_variables(self)
-        inicializar_radioBotones(self)
-        inicializar_componentes(self, "Egreso", "Inicio")
-        
-
-
-#================== Funciones de inicialización componentes ventanas secundarias agregar ingreso y agregar egreso ==================
-def inicializar_variables(self):
-    self.asunto_var=StringVar()
-    self.asuntoOtro_var=StringVar()
-    self.persona_var=StringVar()
-    self.personaOtra_var=StringVar() 
-    self.medio_var=StringVar()
-    self.ncheque_var=StringVar()
-    self.monto_var=StringVar()
-    self.descripcion_var=StringVar()
-    self.imprimir=BooleanVar()
-
-
-
-
-def inicializar_componentes(self, tipo, medio):
     # Validación entradas solo números
     def validacion_numeros(entrada):
         return entrada.isdigit()
 
-    validacionNumero=self.nuevo.register(validacion_numeros)
+    validacionNumero=contenedor_campos.register(validacion_numeros)
 
     # Validación entradas vacias
     def validacion_vacia(evento):
-        if medio=='Inicio' or medio=='Cheque':
-            if self.entrada1.get()=='OTRO' and self.entrada2.get()=='OTRO':
-                if len(self.entrada1_adicional.get())>0 and len(self.entrada2_adicional.get())>0 and len(self.entrada4.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
-                    self.boton2['state']=NORMAL
-                else: self.boton2['state']=DISABLED
-            elif self.entrada1.get()=='OTRO' and self.entrada2.get()!='OTRO':
-                if len(self.entrada1_adicional.get())>0 and len(self.entrada2.get())>0 and len(self.entrada4.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
-                    self.boton2['state']=NORMAL
-                else: self.boton2['state']=DISABLED
-            elif self.entrada1.get()!='OTRO' and self.entrada2.get()=='OTRO':
-                if len(self.entrada1.get())>0 and len(self.entrada2_adicional.get())>0 and len(self.entrada4.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
-                    self.boton2['state']=NORMAL
-                else: self.boton2['state']=DISABLED
+        if medio_var.get()=='Cheque':
+            if entrada1.get()=='OTRO' and entrada2.get()=='OTRO':
+                if len(entrada1_adicional.get())>0 and len(entrada2_adicional.get())>0 and len(entrada4.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+                    botonGuardar['state']=NORMAL
+                else: botonGuardar['state']=DISABLED
+            elif entrada1.get()=='OTRO' and entrada2.get()!='OTRO':
+                if len(entrada1_adicional.get())>0 and len(entrada2.get())>0 and len(entrada4.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+                    botonGuardar['state']=NORMAL
+                else: botonGuardar['state']=DISABLED
+            elif entrada1.get()!='OTRO' and entrada2.get()=='OTRO':
+                if len(entrada1.get())>0 and len(entrada2_adicional.get())>0 and len(entrada4.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+                    botonGuardar['state']=NORMAL
+                else: botonGuardar['state']=DISABLED
             else:
-                if len(self.entrada1.get())>0 and len(self.entrada2.get())>0 and len(self.entrada4.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
-                    self.boton2['state']=NORMAL
-                else: self.boton2['state']=DISABLED
+                if len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada4.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+                    botonGuardar['state']=NORMAL
+                else: botonGuardar['state']=DISABLED
         else:
-            if self.entrada1.get()=='OTRO' and self.entrada2.get()=='OTRO':
-                if len(self.entrada1_adicional.get())>0 and len(self.entrada2_adicional.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
-                    self.boton2['state']=NORMAL
-                else: self.boton2['state']=DISABLED
-            elif self.entrada1.get()=='OTRO' and self.entrada2.get()!='OTRO':
-                if len(self.entrada1_adicional.get())>0 and len(self.entrada2.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
-                    self.boton2['state']=NORMAL
-                else: self.boton2['state']=DISABLED
-            elif self.entrada1.get()!='OTRO' and self.entrada2.get()=='OTRO':
-                if len(self.entrada1.get())>0 and len(self.entrada2_adicional.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
-                    self.boton2['state']=NORMAL
-                else: self.boton2['state']=DISABLED
+            if entrada1.get()=='OTRO' and entrada2.get()=='OTRO':
+                if len(entrada1_adicional.get())>0 and len(entrada2_adicional.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+                    botonGuardar['state']=NORMAL
+                else: botonGuardar['state']=DISABLED
+            elif entrada1.get()=='OTRO' and entrada2.get()!='OTRO':
+                if len(entrada1_adicional.get())>0 and len(entrada2.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+                    botonGuardar['state']=NORMAL
+                else: botonGuardar['state']=DISABLED
+            elif entrada1.get()!='OTRO' and entrada2.get()=='OTRO':
+                if len(entrada1.get())>0 and len(entrada2_adicional.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+                    botonGuardar['state']=NORMAL
+                else: botonGuardar['state']=DISABLED
             else:
-                if len(self.entrada1.get())>0 and len(self.entrada2.get())>0 and len(self.entrada5.get())>0 and len(self.entrada6.get("1.0", "end-1c")):
-                    self.boton2['state']=NORMAL
-                else: self.boton2['state']=DISABLED
+                if len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+                    botonGuardar['state']=NORMAL
+                else: botonGuardar['state']=DISABLED
 
-    self.nuevo.bind('<KeyRelease>', validacion_vacia)
-
-    if medio=='Inicio':
-
-        # Titulo
-        self.titulo=Label(self.nuevo, text=tipo, font=("Helvetica", 18))
-        self.titulo.configure(bg='#FFFFFF')
-        self.titulo.place(x=40, y=10)
-
-        # Label Frame
-        self.contenedor1=LabelFrame(self.nuevo, text="Asunto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-        self.contenedor1.place(x=40, y=50, width=680, height=65)
-
-        if tipo=='Ingreso':
-            self.contenedor2=LabelFrame(self.nuevo, text="Recibido de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-        else: self.contenedor2=LabelFrame(self.nuevo, text="Enviado a", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-        self.contenedor2.place(x=40, y=120, width=680, height=65)
-
-        self.contenedor3=LabelFrame(self.nuevo, text="Fecha", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-        self.contenedor3.place(x=40, y=190, width=680, height=65)
-
-        self.contenedor4=LabelFrame(self.nuevo, text="Número de Cheque", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-        self.contenedor4.place(x=400, y=260, width=320, height=65)
-
-        self.contenedor5=LabelFrame(self.nuevo, text="Monto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-        self.contenedor5.place(x=40, y=330, width=680, height=65)
-
-        self.contenedor6=LabelFrame(self.nuevo, text="Por concepto de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-        self.contenedor6.place(x=40, y=400, width=680, height=150)
-
-        # Entradas
-        def comboboxclick1(evento):
-            if self.asunto_var.get() !='OTRO':
-                self.entrada1_adicional.place_forget()
-            else:
-                self.entrada1_adicional.place(x=330, y=5, width=310, height=32)
-        self.entrada1=ttk.Combobox(self.contenedor1, textvariable=self.asunto_var, font=("Helvetica", 13), state='readonly')
-        if tipo=="Ingreso":
-            self.entrada1['values']=lista_asunto_ingreso
-        else:
-            self.entrada1['values']=lista_asunto_egreso
-        self.entrada1.bind("<<ComboboxSelected>>", comboboxclick1)
-        self.entrada1.place(x=10, y=5, width=310, height=32)
-        self.entrada1_adicional=Entry(self.contenedor1, textvariable=self.asuntoOtro_var, font=("Helvetica", 13))
-
-        def comboboxclick2(evento):
-            if self.persona_var.get() !='OTRO':
-                self.entrada2_adicional.place_forget()
-            else:
-                self.entrada2_adicional.place(x=330, y=5, width=310, height=32)
-
-        self.entrada2=ttk.Combobox(self.contenedor2, textvariable=self.persona_var, font=("Helvetica", 13), state='readonly')
-        if tipo=="Ingreso":
-            self.entrada2['values']=lista_recibido_de
-        else:
-            self.entrada2['values']=lista_enviado_a
-        self.entrada2.bind("<<ComboboxSelected>>", comboboxclick2)
-        self.entrada2.place(x=10, y=5, width=310, height=32)
-        self.entrada2_adicional=Entry(self.contenedor2, textvariable=self.personaOtra_var, font=("Helvetica", 13))
-
-        self.entrada3=dateentry.DateEntry(self.contenedor3, state='readonly', locale='es_CL', date_pattern='dd-mm-yyyy', width=50)
-        self.entrada3.place(x=10, y=5, width=310, height=32)
-        self.entrada3.config(headersbackground="#E62B0A", headersforeground="#ffffff", foreground="#000000", background="#ffffff")
-
-        self.entrada4=Entry(self.contenedor4, textvariable=self.ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
-        self.entrada4.place(x=10, y=5, width=300, height=32)
-
-        self.entrada5=Entry(self.contenedor5, textvariable=self.monto_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
-        self.entrada5.place(x=10, y=5, width=660, height=32)
-
-        self.barra1=Scrollbar(self.contenedor6)
-        self.barra1.place(x=650, y=5, height=110)
-        self.entrada6=Text(self.contenedor6, wrap=WORD, font=("Helvetica", 13), yscrollcommand = self.barra1.set)
-        self.entrada6.place(x=10, y=5, width=635, height=110)
-        self.barra1.config(command=self.entrada6.yview)
+    app.bind('<KeyRelease>', validacion_vacia)
 
 
-
-        # CheckBox
-        self.checkBox=Checkbutton(self.nuevo, text="¿Desea imprimir los datos del "+tipo+"?", variable=self.imprimir, onvalue=TRUE, offvalue=FALSE, font=("Helvetica", 12))
-        self.checkBox.configure(bg='#FFFFFF')
-        self.checkBox.place(x=40, y=570)
-
-        # Botones
-        self.boton1=Button(self.nuevo, text="Regresar", command=lambda:cerrar_ventanaSecundaria(self), font=("Helvetica", 13), borderwidth=0)
-        self.boton1.configure(bg='#FFD1A5')
-        self.boton1.place(x=500, y=570)
-
-        self.boton2=Button(self.nuevo, text="Agregar", command=lambda:crearTransaccion(self, tipo), font=("Helvetica", 13), borderwidth=0)
-        self.boton2.configure(bg='#FFD1A5')
-        self.boton2.place(x=630, y=570)
-        self.boton2['state']=DISABLED
-    
-    elif medio=='Cheque':
-        self.contenedor4.destroy()
-
-        self.contenedor4=LabelFrame(self.nuevo, text="Número de Cheque", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-        self.contenedor4.place(x=400, y=260, width=320, height=65)
-
-        self.entrada4=Entry(self.contenedor4, textvariable=self.ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
-        self.entrada4.place(x=10, y=5, width=300, height=32)
-    
-    else:
-        self.contenedor4.destroy()
-
-
-def inicializar_radioBotones(self):
     # Label Frame
-    contenedorRB=LabelFrame(self.nuevo, text="Medio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedorRB.place(x=40, y=260, width=350, height=65)
+    contenedor0=LabelFrame(contenedor_campos, text="Número de folio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor0.place(x=10, y=10, width=175, height=65)
 
+    contenedor3=LabelFrame(contenedor_campos, text="Fecha", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor3.place(x=195, y=10, width=300, height=65)
+
+    contenedor1=LabelFrame(contenedor_campos, text="Asunto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor1.place(x=10, y=80, width=545, height=105)
+
+    if tipo=='Ingreso':
+        contenedor2=LabelFrame(contenedor_campos, text="Recibido de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    else: contenedor2=LabelFrame(contenedor_campos, text="Enviado a", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor2.place(x=10, y=190, width=545, height=105)
+
+    contenedor4=LabelFrame(contenedor_campos, text="Número de Cheque", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor4.place(x=10, y=370, width=265, height=65)
+
+    contenedor5=LabelFrame(contenedor_campos, text="Monto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor5.place(x=290, y=370, width=265, height=65)
+
+    contenedor6=LabelFrame(contenedor_campos, text="Por concepto de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor6.place(x=10, y=440, width=545, height=150)
+
+    # Entradas
+    def obtener_numero():
+        global fecha
+        global tipoT
+        fecha=entrada3.get_date()
+        tipoT=tipo
+        conectar_BaseDeDatos(0)
+        n=str(numero)
+        numero_var.set(n[len(n)-5]+'-'+n[-4:])
+    def dateentryclick(evento):
+        obtener_numero()
+    entrada3=dateentry.DateEntry(contenedor3, state='readonly', locale='es_CL', date_pattern='dd-mm-yyyy', width=50)
+    entrada3.bind("<<DateEntrySelected>>", dateentryclick)
+    entrada3.place(x=10, y=5, width=280, height=32)
+    entrada3.config(headersbackground="#E62B0A", headersforeground="#ffffff", foreground="#000000", background="#ffffff")
+    entrada0=Entry(contenedor0, textvariable=numero_var, font=("Helvetica", 13), state='readonly')
+    entrada0.place(x=10, y=5, width=160, height=32)
+    obtener_numero()
+
+
+    def comboboxclick1(evento):
+        if asunto_var.get() !='OTRO':
+            entrada1_adicional.place_forget()
+        else:
+            entrada1_adicional.place(x=10, y=45, width=525, height=32)
+    entrada1=ttk.Combobox(contenedor1, textvariable=asunto_var, font=("Helvetica", 13), state='readonly')
+    if tipo=="Ingreso":
+        entrada1['values']=lista_asunto_ingreso
+    else:
+        entrada1['values']=lista_asunto_egreso
+    entrada1.bind("<<ComboboxSelected>>", comboboxclick1)
+    entrada1.place(x=10, y=5, width=525, height=32)
+    entrada1_adicional=Entry(contenedor1, textvariable=asuntoOtro_var, font=("Helvetica", 13))
+
+    def comboboxclick2(evento):
+        if persona_var.get() !='OTRO':
+            entrada2_adicional.place_forget()
+        else:
+            entrada2_adicional.place(x=10, y=45, width=525, height=32)
+
+    entrada2=ttk.Combobox(contenedor2, textvariable=persona_var, font=("Helvetica", 13), state='readonly')
+    if tipo=="Ingreso":
+        entrada2['values']=lista_recibido_de
+    else:
+        entrada2['values']=lista_enviado_a
+    entrada2.bind("<<ComboboxSelected>>", comboboxclick2)
+    entrada2.place(x=10, y=5, width=525, height=32)
+    entrada2_adicional=Entry(contenedor2, textvariable=personaOtra_var, font=("Helvetica", 13))
+
+    entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
+    entrada4.place(x=10, y=5, width=245, height=32)
+
+    locale.setlocale(locale.LC_ALL, 'es_CL.utf8')
+    def mostrar_formato(*args):
+        if len(entrada5.get())>0:
+            monto_var.set(locale.format_string("%d", int(entrada5.get()), grouping=True))
+
+    def quitar_formato(*args):
+        if len(entrada5.get())>0:
+            monto_var.set(entrada5.get().replace(".",""))
+        
+    entrada5=Entry(contenedor5, textvariable=monto_var, font=("Helvetica", 13))
+    entrada5.place(x=10, y=5, width=245, height=32)
+    entrada5.bind("<FocusOut>", mostrar_formato)
+    entrada5.bind("<FocusIn>", quitar_formato)
+
+
+    barra1=Scrollbar(contenedor6)
+    barra1.place(x=515, y=5, height=110)
+    entrada6=Text(contenedor6, wrap=WORD, font=("Helvetica", 13), yscrollcommand = barra1.set)
+    entrada6.place(x=10, y=5, width=500, height=110)
+    barra1.config(command=entrada6.yview)
+
+    # Label Frame
+    contenedorRB=LabelFrame(contenedor_campos, text="Medio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedorRB.place(x=10, y=300, width=545, height=65)
+
+    def mostrar_contenedor4():
+        if medio_var.get()=='Cheque':
+            contenedor4.place(x=10, y=370, width=265, height=65)
+        else: contenedor4.place_forget()
 
     # Botones radio
-    radioBoton1=Radiobutton(contenedorRB, text="Cheque", font=("Helvetica", 13), variable=self.medio_var, value="Cheque", command=lambda:inicializar_componentes(self, "", "Cheque"), bg='#FFFFFF')
-    radioBoton1.place(x=5, y=5)
+    radioBoton1=Radiobutton(contenedorRB, text="Cheque", font=("Helvetica", 13), variable=medio_var, value="Cheque", command=mostrar_contenedor4, bg='#FFFFFF')
+    radioBoton1.place(x=10, y=5)
     radioBoton1.select()
 
-    radioBoton2=Radiobutton(contenedorRB, text="Efectivo", font=("Helvetica", 13), variable=self.medio_var, value="Efectivo", command=lambda:inicializar_componentes(self, "","Efectivo"), bg='#FFFFFF')
-    radioBoton2.place(x=100, y=5)
+    radioBoton2=Radiobutton(contenedorRB, text="Efectivo", font=("Helvetica", 13), variable=medio_var, value="Efectivo", command=mostrar_contenedor4, bg='#FFFFFF')
+    radioBoton2.place(x=185, y=5)
     
-    radioBoton3=Radiobutton(contenedorRB, text="Transferencia", font=("Helvetica", 13), variable=self.medio_var, value="Transferencia", command=lambda:inicializar_componentes(self, "", "Transferencia"), bg='#FFFFFF')
-    radioBoton3.place(x=200, y=5)
+    radioBoton3=Radiobutton(contenedorRB, text="Transferencia", font=("Helvetica", 13), variable=medio_var, value="Transferencia", command=mostrar_contenedor4, bg='#FFFFFF')
+    radioBoton3.place(x=360, y=5)
 
+
+    # CheckBox
+    checkBox=Checkbutton(contenedor_campos, text="¿Desea imprimir los datos del "+tipo+"?", variable=imprimir, onvalue=TRUE, offvalue=FALSE, font=("Helvetica", 12))
+    checkBox.configure(bg='#FFFFFF')
+    checkBox.place(x=10, y=600)
+
+    # Botones
+    botonCancelar=Button(contenedor_campos, text="Cancelar", command=lambda:cerrar_seccion_agregar(), font=("Helvetica", 13), borderwidth=3)
+    botonCancelar.place(x=370, y=600)
+    botonGuardar=Button(contenedor_campos, text="Guardar", command=lambda:crearTransaccion(tipo), font=("Helvetica", 13), borderwidth=3)
+    botonGuardar.place(x=470, y=600)
+    botonGuardar['state']=DISABLED
+
+
+def cerrar_seccion_agregar():
+    contenedor_campos.place_forget()
+    contenedor_operaciones.place(x=830, y=10, width=565, height=75)
     
-def crearTransaccion(self, t):
+def crearTransaccion(t):
     global tipo
     global asunto
     global persona
@@ -715,26 +624,215 @@ def crearTransaccion(self, t):
     global ncheque
     global monto
     global descripcion
-    asunto=self.entrada1.get()
+    asunto=entrada1.get()
     if asunto=='OTRO':
-        asunto=self.entrada1_adicional.get()
-    persona=self.entrada2.get()
+        asunto=entrada1_adicional.get()
+    persona=entrada2.get()
     if persona=='OTRO':
-        persona=self.entrada2_adicional.get()
-    fecha=self.entrada3.get_date()
-    medio=self.medio_var.get()
+        persona=entrada2_adicional.get()
+    fecha=entrada3.get_date()
+    medio=medio_var.get()
     if medio=="Cheque":
-        ncheque=int(self.entrada4.get())
+        ncheque=int(entrada4.get())
     else: ncheque=0
-    monto=int(self.entrada5.get())
-    descripcion=self.entrada6.get("1.0", "end-1c")
+    monto=int(entrada5.get().replace('.',''))
+    descripcion=entrada6.get("1.0", "end-1c")
     tipo=t
     
     conectar_BaseDeDatos(2) # Conexión a la base de datos (agregar elemento)
-    if self.imprimir.get()==TRUE:
-        crear_documento()
+    crear_documento()
+    if imprimir.get()==True:
         imprimir_documento()
-    cerrar_ventanaSecundaria(self)
+    cerrar_seccion_agregar()
+
+def inicializar_variables_editor():
+    global numero_var
+    global asunto_var
+    global persona_var
+    global fecha_var
+    global medio_var
+    global ncheque_var
+    global monto_var
+    global descripcion_var
+    global imprimir
+    numero_var=StringVar()
+    asunto_var=StringVar()
+    persona_var=StringVar()
+    fecha_var=StringVar()
+    medio_var=StringVar()
+    ncheque_var=StringVar()
+    monto_var=StringVar()
+    descripcion_var=StringVar()
+    imprimir=BooleanVar()
+
+def inicializar_componentes_editor(tipo):
+    global contenedor0
+    global contenedor1
+    global contenedor2
+    global contenedor3
+    global contenedor4
+    global contenedor5
+    global contenedor6
+
+    global entrada0
+    global entrada1
+    global entrada1_adicional
+    global entrada2
+    global entrada2_adicional
+    global entrada3
+    global entrada4
+    global entrada5
+    global entrada6
+
+    global botonCancelar
+    global botonGuardar
+
+
+    # Validación entradas solo números
+    def validacion_numeros(entrada):
+        return entrada.isdigit()
+
+    validacionNumero=contenedor_campos.register(validacion_numeros)
+
+    # Validación entradas vacias
+    def validacion_vacia(evento):
+        if medio_var.get()=='Cheque':
+            if len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada4.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+                botonGuardar['state']=NORMAL
+            else: botonGuardar['state']=DISABLED
+        else:
+            if len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+                botonGuardar['state']=NORMAL
+            else: botonGuardar['state']=DISABLED
+
+    app.bind('<KeyRelease>', validacion_vacia)
+
+    # Label Frame
+    contenedor0=LabelFrame(contenedor_editor, text="Número de folio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor0.place(x=10, y=10, width=175, height=65)
+
+    contenedor3=LabelFrame(contenedor_editor, text="Fecha", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor3.place(x=195, y=10, width=300, height=65)
+
+    contenedor1=LabelFrame(contenedor_editor, text="Asunto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor1.place(x=10, y=80, width=545, height=65)
+
+    if tipo=='Ingreso':
+        contenedor2=LabelFrame(contenedor_editor, text="Recibido de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    else: contenedor2=LabelFrame(contenedor_editor, text="Enviado a", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor2.place(x=10, y=150, width=545, height=65)
+
+    contenedor4=LabelFrame(contenedor_editor, text="Número de Cheque", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+
+    contenedor5=LabelFrame(contenedor_editor, text="Monto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor5.place(x=10, y=290, width=265, height=65)
+
+    contenedor6=LabelFrame(contenedor_editor, text="Por concepto de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor6.place(x=10, y=360, width=545, height=150)
+
+    # Entradas
+    entrada3=Entry(contenedor3, textvariable=fecha_var, font=("Helvetica", 13), state='readonly')
+    entrada3.place(x=10, y=5, width=280, height=32)
+    fecha_var.set(tabla.item(elemento)['values'][4])
+    entrada0=Entry(contenedor0, textvariable=numero_var, font=("Helvetica", 13), state='readonly')
+    entrada0.place(x=10, y=5, width=160, height=32)
+    numero_var.set(tabla.item(elemento)['values'][0])
+
+    entrada1=Entry(contenedor1, textvariable=asunto_var, font=("Helvetica", 13))
+    entrada1.place(x=10, y=5, width=525, height=32)
+    entrada1.insert(0, tabla.item(elemento)['values'][2])
+
+    entrada2=Entry(contenedor2, textvariable=persona_var, font=("Helvetica", 13))
+    entrada2.place(x=10, y=5, width=525, height=32)
+    entrada2.insert(0, tabla.item(elemento)['values'][3])
+
+    entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
+    entrada4.place(x=10, y=5, width=245, height=32)
+    entrada4.insert(0, tabla.item(elemento)['values'][6])
+
+    locale.setlocale(locale.LC_ALL, 'es_CL.utf8')
+    def mostrar_formato(*args):
+        if len(entrada5.get())>0:
+            monto_var.set(locale.format_string("%d", int(entrada5.get()), grouping=True))
+
+    def quitar_formato(*args):
+        if len(entrada5.get())>0:
+            monto_var.set(entrada5.get().replace(".",""))
+        
+    entrada5=Entry(contenedor5, textvariable=monto_var, font=("Helvetica", 13))
+    entrada5.place(x=10, y=5, width=245, height=32)
+    entrada5.insert(0, tabla.item(elemento)['values'][7])
+    entrada5.bind("<FocusOut>", mostrar_formato)
+    entrada5.bind("<FocusIn>", quitar_formato)
+
+
+    barra1=Scrollbar(contenedor6)
+    barra1.place(x=515, y=5, height=110)
+    entrada6=Text(contenedor6, wrap=WORD, font=("Helvetica", 13), yscrollcommand = barra1.set)
+    entrada6.place(x=10, y=5, width=500, height=110)
+    entrada6.insert("1.0", tabla.item(elemento)['values'][8])
+    barra1.config(command=entrada6.yview)
+
+    # Medio
+    contenedorMedio=LabelFrame(contenedor_editor, text="Medio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedorMedio.place(x=10, y=220, width=265, height=65)
+    entradaMedio=Entry(contenedorMedio, textvariable=medio_var, font=("Helvetica", 13), state='readonly')
+    entradaMedio.place(x=10, y=5, width=245, height=32)
+    medio_var.set(tabla.item(elemento)['values'][5])
+
+    if tabla.item(elemento)['values'][5]=='Cheque':
+        contenedor4.place(x=290, y=220, width=265, height=65)
+    else: contenedor4.place_forget()
+
+    # CheckBox
+    checkBox=Checkbutton(contenedor_editor, text="¿Desea imprimir los datos del "+tipo+"?", variable=imprimir, onvalue=TRUE, offvalue=FALSE, font=("Helvetica", 12))
+    checkBox.configure(bg='#FFFFFF')
+    checkBox.place(x=10, y=560)
+
+    # Botones
+    botonCancelar=Button(contenedor_editor, text="Cancelar", command=cerrar_seccion_editar, font=("Helvetica", 13), borderwidth=3)
+    botonCancelar.place(x=370, y=560)
+    botonGuardar=Button(contenedor_editor, text="Guardar", command=guardar_cambios_edicion, font=("Helvetica", 13), borderwidth=3)
+    botonGuardar.place(x=470, y=560)
+    botonGuardar['state']=DISABLED
+
+def cerrar_seccion_editar():
+    contenedor_editor.place_forget()
+    contenedor_operaciones.place(x=830, y=10, width=565, height=75)
+    tabla.selection_remove(tabla.selection())
+    botonAgregarIngreso.place(x=20, y=10)
+    botonAgregarEgreso.place(x=180, y=10)
+    botonEditar.place_forget()
+    botonImprimir.place_forget()
+
+def guardar_cambios_edicion():
+    global numero
+    global tipo
+    global asunto
+    global persona
+    global fecha
+    global medio
+    global ncheque
+    global monto
+    global descripcion
+    asunto=entrada1.get()
+    persona=entrada2.get()
+    fecha=datetime.strptime(tabla.item(elemento)['values'][4], '%d-%m-%Y')
+    medio=medio_var.get()
+    if medio=="Cheque":
+        ncheque=int(entrada4.get())
+    else: ncheque=0
+    monto=int(entrada5.get().replace('.',''))
+    descripcion=entrada6.get("1.0", "end-1c")
+    tipo=tabla.item(elemento)['values'][1]
+    numero=int(tabla.item(elemento)['values'][0].replace("-",""))
+
+    
+    conectar_BaseDeDatos(6) # Conexión a la base de datos (editar elemento)
+    crear_documento()
+    if imprimir.get()==True:
+        imprimir_documento()
+    cerrar_seccion_editar()
 
 # Función que busca la ruta del archivo 
 def findfile(name, path):
@@ -799,7 +897,7 @@ def crear_documento():
         }
 
     documento.render(context)
-    documento.save(Path(filepath).parent / f"{numero}_{tipo}.docx")
+    documento.save(Path(filepath).parent / f"{n[len(n)-5]+'-'+n[-4:]}_{tipo}.docx")
     global rod
     rod =os.path.dirname(os.path.abspath(filepath))
 
@@ -813,22 +911,213 @@ def imprimir_documento():
     attributes['pDevMode'].Duplex = 3 
     win32print.SetPrinter(handle, level, attributes, 0)
     win32print.GetPrinter(handle, level)['pDevMode'].Duplex
-    
-    win32api.ShellExecute(0, "print", rod+"\\"+str(numero)+"_"+tipo+".docx", None,  ".",  0)
+    win32api.ShellExecute(0, "print", rod+"\\"+str(numero[len(numero)-5])+'-'+str(numero[-4:])+"_"+tipo+".docx", None,  ".",  0)
     win32print.ClosePrinter(handle)
-    
 
-def disable_event():
-   pass
 
-def cerrar_ventanaSecundaria(self):
-    self.destroy()
-    self.master.deiconify()
+def cerrar_ventanaPrincipal():
+    if messagebox.askokcancel("Salir", "¿Desea Salir?"):
+        backup_database()
+        app.destroy()
 
-app=Aplicacion()
+def agregar_ingreso():
+    contenedor_operaciones.place_forget()
+    contenedor_campos['text']="Ingreso"
+    contenedor_campos.place(x=830, y=10, width=565, height=660)
+    inicializar_variables()
+    inicializar_componentes("Ingreso")
+
+def agregar_egreso():
+    contenedor_operaciones.place_forget()
+    contenedor_campos['text']="Egreso"
+    contenedor_campos.place(x=830, y=10, width=565, height=660)
+    inicializar_variables()
+    inicializar_componentes("Egreso")
+
+def editar_transaccion():
+    global elemento
+    elemento=tabla.selection()[0]
+    contenedor_operaciones.place_forget()
+    contenedor_editor['text']="Editor "+tabla.item(elemento)['values'][1]
+    contenedor_editor.place(x=830, y=10, width=565, height=660)
+    inicializar_variables_editor()
+    inicializar_componentes_editor(tabla.item(elemento)['values'][1])
+
+def imprimir_transaccion():
+    elemento=tabla.selection()[0]
+    global numero
+    global tipo
+    global asunto
+    global persona
+    global fecha
+    global medio
+    global ncheque
+    global monto
+    global descripcion
+    numero=int(tabla.item(elemento)['values'][0].replace('-',''))
+    tipo=tabla.item(elemento)['values'][1]
+    asunto=tabla.item(elemento)['values'][2]
+    persona=tabla.item(elemento)['values'][3]
+    fecha=datetime.strptime(tabla.item(elemento)['values'][4], '%d-%m-%Y')
+    medio=tabla.item(elemento)['values'][5]
+    ncheque=tabla.item(elemento)['values'][6]
+    monto=tabla.item(elemento)['values'][7]
+    descripcion=tabla.item(elemento)['values'][8]
+    filepath=findfile(str(numero)+"_"+tipo+".docx", "\\")
+    if os.path.exists(filepath)==False:
+            crear_documento()
+    else:
+        global rod
+        rod =os.path.dirname(os.path.abspath(filepath))
+        imprimir_documento()
+    tabla.selection_remove(tabla.selection())
+
+
+
+def buscar_persona():
+    conectar_BaseDeDatos(3)
+
+def limpiar_tabla():
+    entrada1.delete(0, 'end')
+    conectar_BaseDeDatos(4)
+
+def filtrar_tabla(evento):
+    conectar_BaseDeDatos(5)
+
+def actualizar_tabla():
+    conectar_BaseDeDatos(4)
+
+def anular_elemento():
+    pass
+
+
+
+#====================================VENTANA PRINCIPAL=========================================
+
+app=Tk()
+app.title("Sistema de Caja")
+width = 1400 # ancho de la ventana
+height = 675 # alto de la ventana
+x = 10
+y = 10
+app.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
+app.resizable(width=False, height=False)
+app.configure(bg='#FFFFFF')
+app.iconbitmap(sys.executable)
+app.protocol("WM_DELETE_WINDOW", cerrar_ventanaPrincipal)
+
+
+# Frames: Contenedores dentro de la ventana que contienen los elementos
+contenedor_Buscador=LabelFrame(app, text="Buscador Persona", font=('Helvetica', 12), bg='#8297BC', fg='#FFFFFF')
+contenedor_Buscador.place(x=10, y=10, width=575, height=75)
+contenedor_FiltroTipo=LabelFrame(app, text="Filtrar por tipo", font=('Helvetica', 12), bg='#C5A97B', fg='#FFFFFF')
+contenedor_FiltroTipo.place(x=600, y=10, width=220, height=75)
+
+contenedor_operaciones=LabelFrame(app, text="Operaciones", font=('Helvetica', 12), bg='#E64611', fg='#FFFFFF')
+contenedor_operaciones.place(x=830, y=10, width=565, height=75)
+contenedor_Tabla=Frame(app, bg='#EDB712')
+contenedor_Tabla.place(x=10, y=90, width=810, height=575)
+contenedor_campos=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
+contenedor_editor=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
+
+
+# Tabla
+global tabla
+global barra1
+global barra2
+tabla = ttk.Treeview(contenedor_Tabla, selectmode='extended')
+tabla.place(x=10, y=10, width=770, height=535)
+tabla['columns']=("1", "2", "3", "4", "5", "6", "7", "8", "9")
+tabla['show']='headings'
+barra1=Scrollbar(contenedor_Tabla, orient=HORIZONTAL, command=tabla.xview)
+barra1.place(x=10, y=550, width=770)
+barra2=Scrollbar(contenedor_Tabla, orient=VERTICAL, command=tabla.yview)
+barra2.place(x=785, y=10, height=535)
+
+tabla.configure(xscrollcommand=barra1.set, yscrollcommand=barra2.set)
+
+estilo_tabla=ttk.Style()
+estilo_tabla.configure('Treeview.Heading', font=('Helvetica', 11), rowheigth=40)
+estilo_tabla.configure('Treeview', font=('Helvetica', 11), rowheigth=40)
+estilo_tabla.map('Treeview', background=[('selected', 'silver')])
+
+
+tabla.heading('1', text="Número", anchor=W)
+tabla.heading('2', text="Tipo", anchor=W)
+tabla.heading('3', text="Asunto", anchor=W)
+tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
+tabla.heading('5', text="Fecha", anchor=W)
+tabla.heading('6', text="Medio", anchor=W)
+tabla.heading('7', text="Número de Cheque", anchor=W)
+tabla.heading('8', text="Monto", anchor=W)
+tabla.heading('9', text="Por concepto de", anchor=W)
+
+tabla.column('1', stretch=NO, minwidth=80, width=80)
+tabla.column('2', stretch=NO, minwidth=100, width=100)
+tabla.column('3', stretch=NO, minwidth=300, width=300)
+tabla.column('4', stretch=NO, minwidth=300, width=300)
+tabla.column('5', stretch=NO, minwidth=100, width=100)
+tabla.column('6', stretch=NO, minwidth=100, width=100)
+tabla.column('7', stretch=NO, minwidth=150, width=150)
+tabla.column('8', stretch=NO, minwidth=100, width=100)
+tabla.column('9', stretch=NO, minwidth=500, width=500)
+
+# Conexión con la base de datos (importación de datos)
+conectar_BaseDeDatos(1)
+
+def deseleccionar_elemento(evento):
+    tabla.selection_remove(tabla.selection())
+    botonAgregarIngreso.place(x=20, y=10)
+    botonAgregarEgreso.place(x=180, y=10)
+    botonEditar.place_forget()
+    botonImprimir.place_forget()
+tabla.bind("<ButtonRelease-3>", deseleccionar_elemento)
+
+def mostrar_boton_editar(evento):
+    botonAgregarIngreso.place_forget()
+    botonAgregarEgreso.place_forget()
+    botonEditar.place(x=20, y=10)
+    botonImprimir.place(x=180, y=10)
+tabla.bind("<ButtonRelease-1>", mostrar_boton_editar)
+
+global busqueda_var
+busqueda_var=StringVar()
+
+def habilitar_boton(evento):
+    if len(entradaBuscar.get())>0:
+        botonBuscar['state']=NORMAL
+    else: botonBuscar['state']=DISABLED
+# Entradas
+global entradaBuscar
+entradaBuscar=Entry(contenedor_Buscador, textvariable=busqueda_var)
+entradaBuscar.place(x=20, y=10, width=350, height=32)
+app.bind('<KeyRelease>', habilitar_boton)
+
+
+global filtroTipo_var
+filtroTipo_var=StringVar(value='Todos')
+
+# Combobox
+combo_tipo=ttk.Combobox(contenedor_FiltroTipo, values=['Todos', 'Ingreso', 'Egreso'], textvariable=filtroTipo_var, font=("Helvetica", 12), state='readonly')
+combo_tipo.place(x=10, y=10, width=200)
+combo_tipo.bind('<<ComboboxSelected>>', filtrar_tabla)
+
+
+# Botones
+botonBuscar=Button(contenedor_Buscador, text="Buscar", command=buscar_persona, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+botonBuscar.place(x=400, y=10)
+botonBuscar['state']=DISABLED
+botonLimpiar=Button(contenedor_Buscador, text="Limpiar", command=limpiar_tabla, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+botonLimpiar.place(x=475, y=10)
+
+
+
+botonAgregarIngreso=Button(contenedor_operaciones, text="Agregar Ingreso", command=agregar_ingreso, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+botonAgregarIngreso.place(x=20, y=10)
+botonAgregarEgreso=Button(contenedor_operaciones, text="Agregar Egreso", command=agregar_egreso, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+botonAgregarEgreso.place(x=180, y=10)
+botonEditar=Button(contenedor_operaciones, text="Editar", command=editar_transaccion, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+botonImprimir=Button(contenedor_operaciones, text="Imprimir", command=imprimir_transaccion, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+
 app.mainloop()
-
-
-
-
-
+    
