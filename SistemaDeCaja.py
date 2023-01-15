@@ -376,17 +376,6 @@ def conectar_BaseDeDatos(opcion):
 
     conexion_bdd.close() # Se cierra la conexión a la base de datos remota
 
-# RESPALDO DE LA BASE DE DATOS AL CERRAR EL PROGRAMA
-def backup_database():
-    filepath = findfile("plantilla_documento_ingreso.docx", "\\")
-    BACKUP_DIR_NAME = str(Path(filepath).parent)
-    FILE_PREFIX = "respaldo_"
-    FILE_SUFFIX_DATE_FORMAT = "%d-%m-%Y_%H-%M-%S"
-
-    timestamp = datetime.now().strftime(FILE_SUFFIX_DATE_FORMAT)
-    backup_filename = BACKUP_DIR_NAME+"\\"+FILE_PREFIX+timestamp+".sql"
-
-    os.system("mysqldump -u " + DB_USER + " -p" + DB_USER_PASSWORD + " -h" + DB_HOST + " " + DB_NAME + "  > "+backup_filename)
 
 #================== Funciones de inicialización componentes secciones agregar ingreso y agregar egreso ==================
 def inicializar_variables():
@@ -917,7 +906,6 @@ def imprimir_documento():
 
 def cerrar_ventanaPrincipal():
     if messagebox.askokcancel("Salir", "¿Desea Salir?"):
-        backup_database()
         app.destroy()
 
 def agregar_ingreso():
