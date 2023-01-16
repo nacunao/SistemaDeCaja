@@ -601,6 +601,10 @@ def inicializar_componentes(tipo):
 
 
 def cerrar_seccion_agregar():
+    entradaBuscar['state']=NORMAL
+    botonBuscar['state']=NORMAL
+    botonLimpiar['state']=NORMAL
+    combo_tipo['state']=NORMAL
     contenedor_campos.place_forget()
     contenedor_operaciones.place(x=830, y=10, width=565, height=75)
     
@@ -786,6 +790,10 @@ def inicializar_componentes_editor(tipo):
     botonGuardar['state']=DISABLED
 
 def cerrar_seccion_editar():
+    entradaBuscar['state']=NORMAL
+    botonBuscar['state']=NORMAL
+    botonLimpiar['state']=NORMAL
+    combo_tipo['state']=NORMAL
     contenedor_editor.place_forget()
     contenedor_operaciones.place(x=830, y=10, width=565, height=75)
     tabla.selection_remove(tabla.selection())
@@ -909,6 +917,10 @@ def cerrar_ventanaPrincipal():
         app.destroy()
 
 def agregar_ingreso():
+    entradaBuscar['state']=DISABLED
+    botonBuscar['state']=DISABLED
+    botonLimpiar['state']=DISABLED
+    combo_tipo['state']=DISABLED
     contenedor_operaciones.place_forget()
     contenedor_campos['text']="Ingreso"
     contenedor_campos.place(x=830, y=10, width=565, height=660)
@@ -916,6 +928,10 @@ def agregar_ingreso():
     inicializar_componentes("Ingreso")
 
 def agregar_egreso():
+    entradaBuscar['state']=DISABLED
+    botonBuscar['state']=DISABLED
+    botonLimpiar['state']=DISABLED
+    combo_tipo['state']=DISABLED
     contenedor_operaciones.place_forget()
     contenedor_campos['text']="Egreso"
     contenedor_campos.place(x=830, y=10, width=565, height=660)
@@ -923,6 +939,10 @@ def agregar_egreso():
     inicializar_componentes("Egreso")
 
 def editar_transaccion():
+    entradaBuscar['state']=DISABLED
+    botonBuscar['state']=DISABLED
+    botonLimpiar['state']=DISABLED
+    combo_tipo['state']=DISABLED
     global elemento
     elemento=tabla.selection()[0]
     contenedor_operaciones.place_forget()
