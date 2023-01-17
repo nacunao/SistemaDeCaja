@@ -330,7 +330,7 @@ def conectar_BaseDeDatos(opcion):
                         tabla.heading('4', text="Recibido de", anchor=W)
                     else: tabla.heading('4', text="Enviado a", anchor=W)
                 else:
-                    mycursor.execute("SELECT * FROM Transaccion")
+                    mycursor.execute("SELECT * FROM Transaccion WHERE `persona` LIKE '"+busqueda_var.get()+"'")
                     tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
             fila = mycursor.fetchall()
             # Se insertan en la tabla los datos de la búsqueda
@@ -375,7 +375,7 @@ def conectar_BaseDeDatos(opcion):
                     tabla.heading('4', text="Recibido de", anchor=W)
                 else: tabla.heading('4', text="Enviado a", anchor=W)
             else:
-                mycursor.execute("SELECT * FROM Transaccion")
+                mycursor.execute("SELECT * FROM Transaccion WHERE `persona` LIKE '"+busqueda_var.get()+"'")
                 tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         fila = mycursor.fetchall()
         
@@ -1120,7 +1120,7 @@ global busqueda_var
 busqueda_var=StringVar()
 
 def habilitar_boton(evento):
-    if len(entradaBuscar.get())>0:
+    if len(entradaBuscar.get())>2:
         botonBuscar['state']=NORMAL
     else: botonBuscar['state']=DISABLED
 # Entradas
