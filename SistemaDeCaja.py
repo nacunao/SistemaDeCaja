@@ -314,7 +314,24 @@ def conectar_BaseDeDatos(opcion):
         if len(busqueda_var.get())>2:
             tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
             mycursor = conexion_bdd.cursor()
-            mycursor.execute("SELECT * FROM Transaccion WHERE `persona` LIKE '%"+busqueda_var.get()+"%'") # Sentencia MYSQL: Se seleccionan los elementos cuya persona contenga carácteres de la ingresada
+            if busqueda_var.get()=='':
+                if filtroTipo_var.get()!='Todos':
+                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"'") # Sentencia MYSQL: Se seleccionan los elementos del tipo seleccionado
+                    if filtroTipo_var.get()=='Ingreso':
+                        tabla.heading('4', text="Recibido de", anchor=W)
+                    else: tabla.heading('4', text="Enviado a", anchor=W)
+                else:
+                    mycursor.execute("SELECT * FROM Transaccion")
+                    tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
+            else:
+                if filtroTipo_var.get()!='Todos':
+                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `persona` = '"+busqueda_var.get()+"'")
+                    if filtroTipo_var.get()=='Ingreso':
+                        tabla.heading('4', text="Recibido de", anchor=W)
+                    else: tabla.heading('4', text="Enviado a", anchor=W)
+                else:
+                    mycursor.execute("SELECT * FROM Transaccion")
+                    tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
             fila = mycursor.fetchall()
             # Se insertan en la tabla los datos de la búsqueda
             for dato in fila:
@@ -342,14 +359,24 @@ def conectar_BaseDeDatos(opcion):
     elif opcion==5:
         tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
         mycursor = conexion_bdd.cursor()
-        if filtroTipo_var.get()!='Todos':
-            mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"'") # Sentencia MYSQL: Se seleccionan los elementos del tipo seleccionado
-            if filtroTipo_var.get()=='Ingreso':
-                tabla.heading('4', text="Recibido de", anchor=W)
-            else: tabla.heading('4', text="Enviado a", anchor=W)
+        if busqueda_var.get()=='':
+            if filtroTipo_var.get()!='Todos':
+                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"'") # Sentencia MYSQL: Se seleccionan los elementos del tipo seleccionado
+                if filtroTipo_var.get()=='Ingreso':
+                    tabla.heading('4', text="Recibido de", anchor=W)
+                else: tabla.heading('4', text="Enviado a", anchor=W)
+            else:
+                mycursor.execute("SELECT * FROM Transaccion")
+                tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         else:
-            mycursor.execute("SELECT * FROM Transaccion")
-            tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
+            if filtroTipo_var.get()!='Todos':
+                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `persona` = '"+busqueda_var.get()+"'")
+                if filtroTipo_var.get()=='Ingreso':
+                    tabla.heading('4', text="Recibido de", anchor=W)
+                else: tabla.heading('4', text="Enviado a", anchor=W)
+            else:
+                mycursor.execute("SELECT * FROM Transaccion")
+                tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         fila = mycursor.fetchall()
         
         # Se insertan en la tabla los datos seleccionados
@@ -983,17 +1010,18 @@ def imprimir_transaccion():
 
 
 def buscar_persona():
+    contenedor_operaciones.place_forget()
     conectar_BaseDeDatos(3)
 
 def limpiar_tabla():
-    entrada1.delete(0, 'end')
+    entradaBuscar.delete(0, 'end')
+    filtroTipo_var.set('Todos')
+    contenedor_operaciones.place(x=830, y=10, width=565, height=75)
     conectar_BaseDeDatos(4)
 
 def filtrar_tabla(evento):
+    contenedor_operaciones.place_forget()
     conectar_BaseDeDatos(5)
-
-def actualizar_tabla():
-    conectar_BaseDeDatos(4)
 
 def anular_elemento():
     pass
