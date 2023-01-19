@@ -28,6 +28,14 @@ from win32 import win32api
 # LISTAS ASUNTO
 lista_asunto_ingreso=[
     'ARRIENDO',
+    'ARRIENDO CONFITERÍA EL FORTÍN',
+    'ARRIENDO CONFITERÍA ACHAVAR',
+    'ARRIENDO LIN DÍAZ',
+    'ARRIENDO LIN DÍAZ SEGUNDO PISO',
+    'ARRIENDO LA VERTIENTE (S BERNAL)',
+    'ARRIENDO KOPPA (E BERNAL)',
+    'ARRIENDO CLAUDIA (E BERNAL)',
+    'ARRIENDO CAFETERIA (BRAULIO)',
     'ARRIENDO SCOUT',
     'ARRIENDO EVENTO',
     'ARRIENDO FIN DE SEMANA',
@@ -308,7 +316,7 @@ def conectar_BaseDeDatos(opcion):
             tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
         else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
 
-    # Buscar en la base de datos por persona (Recibido de:/Enviado a:)
+    # Buscar en la base de datos por asunto
     elif opcion==3:
         # Se hace la busqueda sí se ingreso una cadena de largo mayor a 2 carácteres 
         if len(busqueda_var.get())>2:
@@ -325,12 +333,12 @@ def conectar_BaseDeDatos(opcion):
                     tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
             else:
                 if filtroTipo_var.get()!='Todos':
-                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `persona` = '"+busqueda_var.get()+"'")
+                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `asunto` = '"+busqueda_var.get()+"'")
                     if filtroTipo_var.get()=='Ingreso':
                         tabla.heading('4', text="Recibido de", anchor=W)
                     else: tabla.heading('4', text="Enviado a", anchor=W)
                 else:
-                    mycursor.execute("SELECT * FROM Transaccion WHERE `persona` LIKE '"+busqueda_var.get()+"'")
+                    mycursor.execute("SELECT * FROM Transaccion WHERE `asunto` LIKE '"+busqueda_var.get()+"'")
                     tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
             fila = mycursor.fetchall()
             # Se insertan en la tabla los datos de la búsqueda
@@ -370,12 +378,12 @@ def conectar_BaseDeDatos(opcion):
                 tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         else:
             if filtroTipo_var.get()!='Todos':
-                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `persona` = '"+busqueda_var.get()+"'")
+                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `asunto` = '"+busqueda_var.get()+"'")
                 if filtroTipo_var.get()=='Ingreso':
                     tabla.heading('4', text="Recibido de", anchor=W)
                 else: tabla.heading('4', text="Enviado a", anchor=W)
             else:
-                mycursor.execute("SELECT * FROM Transaccion WHERE `persona` LIKE '"+busqueda_var.get()+"'")
+                mycursor.execute("SELECT * FROM Transaccion WHERE `asunto` LIKE '"+busqueda_var.get()+"'")
                 tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         fila = mycursor.fetchall()
         
@@ -388,8 +396,8 @@ def conectar_BaseDeDatos(opcion):
 
     # Editar elemento
     else:
-        sql = "UPDATE Transaccion SET `asunto` = %s, `persona` = %s, `nCheque` = %s, `monto` = %s, `descripcion` = %s WHERE `numero` = %s AND `tipo` = %s"
-        valores = (asunto, persona, ncheque, monto, descripcion, numero, tipo)
+        sql = "UPDATE Transaccion SET `asunto` = %s, `persona` = %s, `fecha` = %s, `medio` = %s, `nCheque` = %s, `monto` = %s, `descripcion` = %s WHERE `numero` = %s AND `tipo` = %s"
+        valores = (asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion, numero, tipo)
         
         mycursor = conexion_bdd.cursor()
         mycursor.execute(sql, valores)
@@ -629,7 +637,6 @@ def inicializar_componentes(tipo):
 
 def cerrar_seccion_agregar():
     entradaBuscar['state']=NORMAL
-    botonBuscar['state']=NORMAL
     botonLimpiar['state']=NORMAL
     combo_tipo['state']=NORMAL
     contenedor_campos.place_forget()
@@ -704,8 +711,12 @@ def inicializar_componentes_editor(tipo):
     global entrada5
     global entrada6
 
+    global contenedorMedio
+
     global botonCancelar
     global botonGuardar
+
+    medio_var.set(tabla.item(elemento)['values'][5])
 
 
     # Validación entradas solo números
@@ -714,8 +725,8 @@ def inicializar_componentes_editor(tipo):
 
     validacionNumero=contenedor_campos.register(validacion_numeros)
 
-    # Validación entradas vacias
     def validacion_vacia(evento):
+        print(medio_var.get())
         if medio_var.get()=='Cheque':
             if len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada4.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
                 botonGuardar['state']=NORMAL
@@ -726,6 +737,18 @@ def inicializar_componentes_editor(tipo):
             else: botonGuardar['state']=DISABLED
 
     app.bind('<KeyRelease>', validacion_vacia)
+
+    def validacion_datos_correctos(evento):
+        if medio_var.get()=='Cheque':
+            if entrada1.get()!=tabla.item(elemento)['values'][2] or entrada2.get()!=tabla.item(elemento)['values'][3] or entrada4.get()!=tabla.item(elemento)['values'][6] or entrada5.get()!=tabla.item(elemento)['values'][7].replace('.','') or entrada6.get("1.0", "end-1c")!=tabla.item(elemento)['values'][8]:
+                botonGuardar['state']=NORMAL
+            else: botonGuardar['state']=DISABLED
+        else:
+            if entrada1.get()!=tabla.item(elemento)['values'][2] or entrada2.get()!=tabla.item(elemento)['values'][3] or entrada5.get()!=tabla.item(elemento)['values'][7].replace('.','') or entrada6.get("1.0", "end-1c")!=tabla.item(elemento)['values'][8]:
+                botonGuardar['state']=NORMAL
+            else: botonGuardar['state']=DISABLED
+
+    app.bind('<KeyRelease>', validacion_datos_correctos)
 
     # Label Frame
     contenedor0=LabelFrame(contenedor_editor, text="Número de folio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
@@ -745,15 +768,22 @@ def inicializar_componentes_editor(tipo):
     contenedor4=LabelFrame(contenedor_editor, text="Número de Cheque", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
 
     contenedor5=LabelFrame(contenedor_editor, text="Monto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor5.place(x=10, y=290, width=265, height=65)
+    contenedor5.place(x=290, y=290, width=265, height=65)
 
     contenedor6=LabelFrame(contenedor_editor, text="Por concepto de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
     contenedor6.place(x=10, y=360, width=545, height=150)
 
-    # Entradas
-    entrada3=Entry(contenedor3, textvariable=fecha_var, font=("Helvetica", 13), state='readonly')
+
+    def dateentryclick(evento):
+        if entrada3.get_date().strftime("%d-%m-%Y")!=tabla.item(elemento)['values'][4] and entrada3.get_date().strftime("%Y")==tabla.item(elemento)['values'][4][-4:]:
+            botonGuardar['state']=NORMAL
+        else: botonGuardar['state']=DISABLED
+    entrada3=dateentry.DateEntry(contenedor3, state='readonly', locale='es_CL', date_pattern='dd-mm-yyyy', width=50)
+    entrada3.bind("<<DateEntrySelected>>", dateentryclick)
     entrada3.place(x=10, y=5, width=280, height=32)
-    fecha_var.set(tabla.item(elemento)['values'][4])
+    entrada3.set_date(tabla.item(elemento)['values'][4])
+    
+
     entrada0=Entry(contenedor0, textvariable=numero_var, font=("Helvetica", 13), state='readonly')
     entrada0.place(x=10, y=5, width=160, height=32)
     numero_var.set(tabla.item(elemento)['values'][0])
@@ -768,7 +798,6 @@ def inicializar_componentes_editor(tipo):
 
     entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
     entrada4.place(x=10, y=5, width=245, height=32)
-    entrada4.insert(0, tabla.item(elemento)['values'][6])
 
     locale.setlocale(locale.LC_ALL, 'es_CL.utf8')
     def mostrar_formato(*args):
@@ -795,14 +824,37 @@ def inicializar_componentes_editor(tipo):
 
     # Medio
     contenedorMedio=LabelFrame(contenedor_editor, text="Medio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedorMedio.place(x=10, y=220, width=265, height=65)
-    entradaMedio=Entry(contenedorMedio, textvariable=medio_var, font=("Helvetica", 13), state='readonly')
-    entradaMedio.place(x=10, y=5, width=245, height=32)
-    medio_var.set(tabla.item(elemento)['values'][5])
+    contenedorMedio.place(x=10, y=220, width=545, height=65)
+    
+    
+    
+
+    def mostrar_contenedor4():
+        if medio_var.get()=='Cheque':
+            contenedor4.place(x=10, y=290, width=265, height=65)
+            entrada4.insert(0, tabla.item(elemento)['values'][6])
+        else:
+            entrada4.delete(0, 'end')
+            contenedor4.place_forget()
+    
+    # Botones radio
+    radioBoton1=Radiobutton(contenedorMedio, text="Cheque", font=("Helvetica", 13), variable=medio_var, value="Cheque", command=mostrar_contenedor4, bg='#FFFFFF')
+    radioBoton1.place(x=10, y=5)
+
+    radioBoton2=Radiobutton(contenedorMedio, text="Efectivo", font=("Helvetica", 13), variable=medio_var, value="Efectivo", command=mostrar_contenedor4, bg='#FFFFFF')
+    radioBoton2.place(x=185, y=5)
+    
+    radioBoton3=Radiobutton(contenedorMedio, text="Transferencia", font=("Helvetica", 13), variable=medio_var, value="Transferencia", command=mostrar_contenedor4, bg='#FFFFFF')
+    radioBoton3.place(x=360, y=5)
 
     if tabla.item(elemento)['values'][5]=='Cheque':
-        contenedor4.place(x=290, y=220, width=265, height=65)
-    else: contenedor4.place_forget()
+        mostrar_contenedor4()
+        radioBoton1.select()
+    elif tabla.item(elemento)['values'][5]=='Efectivo':
+        radioBoton2.select()
+    else:
+        radioBoton3.select()
+
 
     # CheckBox
     checkBox=Checkbutton(contenedor_editor, text="¿Desea imprimir los datos del "+tipo+"?", variable=imprimir, onvalue=TRUE, offvalue=FALSE, font=("Helvetica", 12))
@@ -818,9 +870,9 @@ def inicializar_componentes_editor(tipo):
 
 def cerrar_seccion_editar():
     entradaBuscar['state']=NORMAL
-    botonBuscar['state']=NORMAL
     botonLimpiar['state']=NORMAL
     combo_tipo['state']=NORMAL
+    contenedor4.place_forget()
     contenedor_editor.place_forget()
     contenedor_operaciones.place(x=830, y=10, width=565, height=75)
     tabla.selection_remove(tabla.selection())
@@ -841,7 +893,7 @@ def guardar_cambios_edicion():
     global descripcion
     asunto=entrada1.get()
     persona=entrada2.get()
-    fecha=datetime.strptime(tabla.item(elemento)['values'][4], '%d-%m-%Y')
+    fecha=entrada3.get_date()
     medio=medio_var.get()
     if medio=="Cheque":
         ncheque=int(entrada4.get())
@@ -1020,7 +1072,10 @@ def limpiar_tabla():
     conectar_BaseDeDatos(4)
 
 def filtrar_tabla(evento):
-    contenedor_operaciones.place_forget()
+    if filtroTipo_var.get()=='Todos' and busqueda_var.get()=='':
+        contenedor_operaciones.place(x=830, y=10, width=565, height=75)
+    else:
+        contenedor_operaciones.place_forget()
     conectar_BaseDeDatos(5)
 
 def anular_elemento():
@@ -1044,7 +1099,7 @@ app.protocol("WM_DELETE_WINDOW", cerrar_ventanaPrincipal)
 
 
 # Frames: Contenedores dentro de la ventana que contienen los elementos
-contenedor_Buscador=LabelFrame(app, text="Buscador Persona", font=('Helvetica', 12), bg='#8297BC', fg='#FFFFFF')
+contenedor_Buscador=LabelFrame(app, text="Buscador Asunto", font=('Helvetica', 12), bg='#8297BC', fg='#FFFFFF')
 contenedor_Buscador.place(x=10, y=10, width=575, height=75)
 contenedor_FiltroTipo=LabelFrame(app, text="Filtrar por tipo", font=('Helvetica', 12), bg='#C5A97B', fg='#FFFFFF')
 contenedor_FiltroTipo.place(x=600, y=10, width=220, height=75)
