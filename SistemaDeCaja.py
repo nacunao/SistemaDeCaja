@@ -4,6 +4,8 @@ import sys
 import os
 from datetime import *
 import locale
+import pandas as pd
+import xlsxwriter as xls
 
 # Librerías Interfaz Gráfica Tkinter
 from tkinter import *
@@ -23,6 +25,8 @@ from docxtpl import DocxTemplate
 # Librerías impresión
 from win32 import win32print
 from win32 import win32api
+
+fecha_anterior=datetime.now().date().strftime('%d-%m-%Y')
 
 
 # LISTAS ASUNTO
@@ -48,8 +52,11 @@ lista_asunto_ingreso=[
     'APORTE PARTICULAR',
     'OTRO']
 lista_asunto_egreso=[
+    'AGUA'
     'REMUNERACIONES',
     'HONORARIOS',
+    'IMPOSICIONES',
+    'IMPUESTO MENSUAL',
     'CONTRIBUCIONES',
     'CELULAR',
     'CAJA CHICA',
@@ -59,10 +66,13 @@ lista_asunto_egreso=[
     'CRONOMETRISTA',
     'DEUDA CONVENIO',
     'GASTOS COPA PANCHO',
+    'ELECTRICIDAD'
+    'IMPRENTA',
     'TRABAJO EXTRA',
     'TRANSPORTE',
     'COMUNICACIONES',
     'AGUINALDO',
+    'DIVSIONES FORMATIVAS',
     'VARIOS',
     'OTRO'
 ]
@@ -88,9 +98,30 @@ lista_enviado_a=[
     'SECRETARIA',
     'CLAUDIO OSORIO',
     'VERONICA SAMIT',
+    'BRAULIO SASSO',
     'BANCO SANTANDER',
+    'ANA MARIA GRANADA ALVAREZ',
+    'LUIS SANCHEZ',
     'OTRO'
 ]
+
+
+lista_meses=[
+    '01 - ENERO',
+    '02 - FEBRERO',
+    '03 - MARZO',
+    '04 - ABRIL',
+    '05 - MAYO',
+    '06 - JUNIO',
+    '07 - JULIO',
+    '08 - AGOSTO',
+    '09 - SEPTIEMBRE',
+    '10 - OCTUBRE',
+    '11 - NOVIEMBRE',
+    '12 - DICIEMBRE']
+lista_a=[]
+for a in range(2015,2031):
+    lista_a.append(str(a))
 
 #------------ SECCIÓN FUNCIÓN MONTO EN PALABRAS -------------------------------
 MAX_NUMERO = 999999999999
@@ -282,10 +313,19 @@ def conectar_BaseDeDatos(opcion):
     # Obtener número de folio
     if opcion==0:
         mycursor=conexion_bdd.cursor()
-        mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE CAST(numero AS CHAR(10)) LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipoT)+"'") # Sentencia MYSQL: Se cuentan todos los ingresos o egresos de un mismo año
+        mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE `numero` LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipoT)+"'") # Sentencia MYSQL: Se cuentan todos los ingresos o egresos de un mismo año
         fila = mycursor.fetchall()
         global numero
-        numero = int(str(int(fila[0][0])+1)+str(fecha.year))
+        ne=int(fila[0][0])
+        if ne==0:
+            numero="000-"+str(fecha.year)
+        else:
+            if ne>=1 and ne<=9:
+                numero = "00"+str(fila[0][0])+"-"+str(fecha.year)
+            elif ne>=11 and ne<=99:
+                numero = "0"+str(fila[0][0])+"-"+str(fecha.year)
+            else:
+                numero = str(fila[0][0])+"-"+str(fecha.year)
 
     # Importar la base de datos
     elif opcion==1:
@@ -295,10 +335,9 @@ def conectar_BaseDeDatos(opcion):
 
         # Se insertan en la tabla todos los elementos de la base de datos
         for dato in fila:
-            n=str(dato[0])
             if dato[6]!=0:
-                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
-            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
 
     # Agregar elemento a la base de datos
     elif opcion==2:
@@ -311,10 +350,9 @@ def conectar_BaseDeDatos(opcion):
         conexion_bdd.commit()
 
         # El elemento nuevo se inserta en la tabla para mantener ésta actualizada
-        n=str(numero)
         if ncheque!=0:
-            tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
-        else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
+            tabla.insert('', 'end', values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
+        else: tabla.insert('', 'end', values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
 
     # Buscar en la base de datos por asunto
     elif opcion==3:
@@ -343,10 +381,9 @@ def conectar_BaseDeDatos(opcion):
             fila = mycursor.fetchall()
             # Se insertan en la tabla los datos de la búsqueda
             for dato in fila:
-                n=str(dato[0])
                 if dato[6]!=0:
-                    tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
-                else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+                    tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+                else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
     
     # Limpiar busqueda de la base de datos
     elif opcion==4:
@@ -358,10 +395,9 @@ def conectar_BaseDeDatos(opcion):
 
         # Se insertan en la tabla todos los elementos de la base de datos
         for dato in fila:
-            n=str(dato[0])
             if dato[6]!=0:
-                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
-            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
 
     # Filtrar Tabla
     elif opcion==5:
@@ -389,13 +425,12 @@ def conectar_BaseDeDatos(opcion):
         
         # Se insertan en la tabla los datos seleccionados
         for dato in fila:
-            n=str(dato[0])
             if dato[6]!=0:
-                tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
-            else: tabla.insert('', 'end', values=(n[len(n)-5]+'-'+n[-4:], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
 
     # Editar elemento
-    else:
+    elif opcion==6:
         sql = "UPDATE Transaccion SET `asunto` = %s, `persona` = %s, `fecha` = %s, `medio` = %s, `nCheque` = %s, `monto` = %s, `descripcion` = %s WHERE `numero` = %s AND `tipo` = %s"
         valores = (asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion, numero, tipo)
         
@@ -403,11 +438,54 @@ def conectar_BaseDeDatos(opcion):
         mycursor.execute(sql, valores)
         conexion_bdd.commit()
 
-        n = str(numero)
 
         if medio=='Cheque':
-            tabla.item(elemento, values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
-        else: tabla.item(elemento, values=(n[len(n)-5]+'-'+n[-4:], tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
+            tabla.item(elemento, values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
+        else: tabla.item(elemento, values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
+    
+    # Exportar datos a excel
+    else:
+        mycursor = conexion_bdd.cursor()
+        mycursor.execute("SELECT * FROM Transaccion WHERE MONTH(fecha) = "+mes[0:2]+" AND YEAR(fecha) = "+anio+" AND `tipo` = '"+tipo+"'")
+        fila = mycursor.fetchall()
+
+        lista_numero=[]
+        lista_asunto=[]
+        lista_persona=[]
+        lista_fecha=[]
+        lista_medio=[]
+        lista_ncheque=[]
+        lista_monto=[]
+        lista_descripcion=[]
+        for dato in fila:
+            lista_numero.append(dato[0])
+            lista_asunto.append(dato[2])
+            lista_persona.append(dato[3])
+            lista_fecha.append(dato[4].strftime("%d-%m-%Y"))
+            lista_medio.append(dato[5])
+            if dato[6]!=0:
+                lista_ncheque.append(dato[6])
+            else: lista_ncheque.append(" ")
+            lista_monto.append(dato[7])
+            lista_descripcion.append(dato[8])
+        
+        if tipo=='Ingreso':
+            data = pd.DataFrame({'Numero':lista_numero, 'Asunto':lista_asunto, 'Recibido de':lista_persona, 'Fecha':lista_fecha, 'Medio':lista_medio, 'N° Cheque':lista_ncheque, 'Monto':lista_monto, 'Por concepto de':lista_descripcion})
+        else: 
+            data = pd.DataFrame({'Numero':lista_numero, 'Asunto':lista_asunto, 'Para':lista_persona, 'Fecha':lista_fecha, 'Medio':lista_medio, 'N° Cheque':lista_ncheque, 'Monto':lista_monto, 'Por concepto de':lista_descripcion})
+
+        filepath = findfile(tipo+"s_"+anio+".xlsx", "\\")
+        if filepath==None:
+            filepath = findfile("plantilla_documento_ingreso.docx", "\\")
+            rod =os.path.dirname(os.path.abspath(filepath))
+            libro=xls.Workbook(rod+"\\"+tipo+"s_"+anio+".xlsx")
+            libro.close()
+            with pd.ExcelWriter(rod+"\\"+tipo+"s_"+anio+".xlsx") as writer:
+                data.to_excel(writer, sheet_name=mes[5:])
+        else:
+            rod =os.path.dirname(os.path.abspath(filepath))
+            with pd.ExcelWriter(rod+"\\"+tipo+"s_"+anio+".xlsx", mode="a", engine="openpyxl") as writer:
+                data.to_excel(writer, sheet_name=mes[5:])
 
     conexion_bdd.close() # Se cierra la conexión a la base de datos remota
 
@@ -456,13 +534,6 @@ def inicializar_componentes(tipo):
 
     global botonCancelar
     global botonGuardar
-
-
-    # Validación entradas solo números
-    def validacion_numeros(entrada):
-        return entrada.isdigit()
-
-    validacionNumero=contenedor_campos.register(validacion_numeros)
 
     # Validación entradas vacias
     def validacion_vacia(evento):
@@ -535,11 +606,11 @@ def inicializar_componentes(tipo):
         fecha=entrada3.get_date()
         tipoT=tipo
         conectar_BaseDeDatos(0)
-        n=str(numero)
-        numero_var.set(n[len(n)-5]+'-'+n[-4:])
+        numero_var.set(numero)
     def dateentryclick(evento):
         obtener_numero()
     entrada3=dateentry.DateEntry(contenedor3, state='readonly', locale='es_CL', date_pattern='dd-mm-yyyy', width=50)
+    entrada3.set_date(fecha_anterior)
     entrada3.bind("<<DateEntrySelected>>", dateentryclick)
     entrada3.place(x=10, y=5, width=280, height=32)
     entrada3.config(headersbackground="#E62B0A", headersforeground="#ffffff", foreground="#000000", background="#ffffff")
@@ -577,7 +648,7 @@ def inicializar_componentes(tipo):
     entrada2.place(x=10, y=5, width=525, height=32)
     entrada2_adicional=Entry(contenedor2, textvariable=personaOtra_var, font=("Helvetica", 13))
 
-    entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
+    entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13))
     entrada4.place(x=10, y=5, width=245, height=32)
 
     locale.setlocale(locale.LC_ALL, 'es_CL.utf8')
@@ -588,7 +659,8 @@ def inicializar_componentes(tipo):
     def quitar_formato(*args):
         if len(entrada5.get())>0:
             monto_var.set(entrada5.get().replace(".",""))
-        
+    
+
     entrada5=Entry(contenedor5, textvariable=monto_var, font=("Helvetica", 13))
     entrada5.place(x=10, y=5, width=245, height=32)
     entrada5.bind("<FocusOut>", mostrar_formato)
@@ -670,6 +742,8 @@ def crearTransaccion(t):
     crear_documento()
     if imprimir.get()==True:
         imprimir_documento()
+    global fecha_anterior
+    fecha_anterior=entrada3.get()
     cerrar_seccion_agregar()
 
 def inicializar_variables_editor():
@@ -716,39 +790,27 @@ def inicializar_componentes_editor(tipo):
     global botonCancelar
     global botonGuardar
 
+    # Botones
+    botonCancelar=Button(contenedor_editor, text="Cancelar", command=cerrar_seccion_editar, font=("Helvetica", 13), borderwidth=3)
+    botonCancelar.place(x=370, y=560)
+    botonGuardar=Button(contenedor_editor, text="Guardar", command=guardar_cambios_edicion, font=("Helvetica", 13), borderwidth=3)
+    botonGuardar.place(x=470, y=560)
+    botonGuardar['state']=DISABLED
+
     medio_var.set(tabla.item(elemento)['values'][5])
 
+    def validacion_datos(evento):
 
-    # Validación entradas solo números
-    def validacion_numeros(entrada):
-        return entrada.isdigit()
-
-    validacionNumero=contenedor_campos.register(validacion_numeros)
-
-    def validacion_vacia(evento):
-        print(medio_var.get())
         if medio_var.get()=='Cheque':
-            if len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada4.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+            if (len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada4.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c"))>0) and (entrada1.get()!=tabla.item(elemento)['values'][2] or entrada2.get()!=tabla.item(elemento)['values'][3] or entrada4.get()!=str(tabla.item(elemento)['values'][6]) or entrada5.get().replace('.','')!=tabla.item(elemento)['values'][7].replace('.','') or entrada6.get("1.0", "end-1c")!=tabla.item(elemento)['values'][8] or entrada3.get_date().strftime("%d-%m-%Y")!=tabla.item(elemento)['values'][4] or medio_var.get()!=tabla.item(elemento)['values'][5]) and entrada3.get_date().strftime("%Y")==tabla.item(elemento)['values'][4][-4:] and entrada5.get().isalpha==False:
                 botonGuardar['state']=NORMAL
             else: botonGuardar['state']=DISABLED
         else:
-            if len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c")):
+            if len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c"))>0 and (entrada1.get()!=tabla.item(elemento)['values'][2] or entrada2.get()!=tabla.item(elemento)['values'][3] or entrada5.get().replace('.','')!=tabla.item(elemento)['values'][7].replace('.','') or entrada6.get("1.0", "end-1c")!=tabla.item(elemento)['values'][8] or entrada3.get_date().strftime("%d-%m-%Y")!=tabla.item(elemento)['values'][4] or medio_var.get()!=tabla.item(elemento)['values'][5]) and entrada3.get_date().strftime("%Y")==tabla.item(elemento)['values'][4][-4:] and entrada5.get().isalpha==False:
                 botonGuardar['state']=NORMAL
             else: botonGuardar['state']=DISABLED
 
-    app.bind('<KeyRelease>', validacion_vacia)
-
-    def validacion_datos_correctos(evento):
-        if medio_var.get()=='Cheque':
-            if entrada1.get()!=tabla.item(elemento)['values'][2] or entrada2.get()!=tabla.item(elemento)['values'][3] or entrada4.get()!=tabla.item(elemento)['values'][6] or entrada5.get()!=tabla.item(elemento)['values'][7].replace('.','') or entrada6.get("1.0", "end-1c")!=tabla.item(elemento)['values'][8]:
-                botonGuardar['state']=NORMAL
-            else: botonGuardar['state']=DISABLED
-        else:
-            if entrada1.get()!=tabla.item(elemento)['values'][2] or entrada2.get()!=tabla.item(elemento)['values'][3] or entrada5.get()!=tabla.item(elemento)['values'][7].replace('.','') or entrada6.get("1.0", "end-1c")!=tabla.item(elemento)['values'][8]:
-                botonGuardar['state']=NORMAL
-            else: botonGuardar['state']=DISABLED
-
-    app.bind('<KeyRelease>', validacion_datos_correctos)
+    app.bind('<KeyRelease>', validacion_datos)
 
     # Label Frame
     contenedor0=LabelFrame(contenedor_editor, text="Número de folio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
@@ -774,12 +836,8 @@ def inicializar_componentes_editor(tipo):
     contenedor6.place(x=10, y=360, width=545, height=150)
 
 
-    def dateentryclick(evento):
-        if entrada3.get_date().strftime("%d-%m-%Y")!=tabla.item(elemento)['values'][4] and entrada3.get_date().strftime("%Y")==tabla.item(elemento)['values'][4][-4:]:
-            botonGuardar['state']=NORMAL
-        else: botonGuardar['state']=DISABLED
     entrada3=dateentry.DateEntry(contenedor3, state='readonly', locale='es_CL', date_pattern='dd-mm-yyyy', width=50)
-    entrada3.bind("<<DateEntrySelected>>", dateentryclick)
+    entrada3.bind("<<DateEntrySelected>>", validacion_datos)
     entrada3.place(x=10, y=5, width=280, height=32)
     entrada3.set_date(tabla.item(elemento)['values'][4])
     
@@ -796,7 +854,7 @@ def inicializar_componentes_editor(tipo):
     entrada2.place(x=10, y=5, width=525, height=32)
     entrada2.insert(0, tabla.item(elemento)['values'][3])
 
-    entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
+    entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13))
     entrada4.place(x=10, y=5, width=245, height=32)
 
     locale.setlocale(locale.LC_ALL, 'es_CL.utf8')
@@ -807,7 +865,7 @@ def inicializar_componentes_editor(tipo):
     def quitar_formato(*args):
         if len(entrada5.get())>0:
             monto_var.set(entrada5.get().replace(".",""))
-        
+    
     entrada5=Entry(contenedor5, textvariable=monto_var, font=("Helvetica", 13))
     entrada5.place(x=10, y=5, width=245, height=32)
     entrada5.insert(0, tabla.item(elemento)['values'][7])
@@ -824,18 +882,18 @@ def inicializar_componentes_editor(tipo):
 
     # Medio
     contenedorMedio=LabelFrame(contenedor_editor, text="Medio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedorMedio.place(x=10, y=220, width=545, height=65)
-    
-    
-    
+    contenedorMedio.place(x=10, y=220, width=545, height=65)  
 
     def mostrar_contenedor4():
         if medio_var.get()=='Cheque':
             contenedor4.place(x=10, y=290, width=265, height=65)
-            entrada4.insert(0, tabla.item(elemento)['values'][6])
+            if len(entrada4.get())>0:
+                entrada4.delete(0, 'end')
+            entrada4.insert(0, str(tabla.item(elemento)['values'][6]))
         else:
             entrada4.delete(0, 'end')
             contenedor4.place_forget()
+        validacion_datos(None)
     
     # Botones radio
     radioBoton1=Radiobutton(contenedorMedio, text="Cheque", font=("Helvetica", 13), variable=medio_var, value="Cheque", command=mostrar_contenedor4, bg='#FFFFFF')
@@ -861,12 +919,6 @@ def inicializar_componentes_editor(tipo):
     checkBox.configure(bg='#FFFFFF')
     checkBox.place(x=10, y=560)
 
-    # Botones
-    botonCancelar=Button(contenedor_editor, text="Cancelar", command=cerrar_seccion_editar, font=("Helvetica", 13), borderwidth=3)
-    botonCancelar.place(x=370, y=560)
-    botonGuardar=Button(contenedor_editor, text="Guardar", command=guardar_cambios_edicion, font=("Helvetica", 13), borderwidth=3)
-    botonGuardar.place(x=470, y=560)
-    botonGuardar['state']=DISABLED
 
 def cerrar_seccion_editar():
     entradaBuscar['state']=NORMAL
@@ -901,7 +953,7 @@ def guardar_cambios_edicion():
     monto=int(entrada5.get().replace('.',''))
     descripcion=entrada6.get("1.0", "end-1c")
     tipo=tabla.item(elemento)['values'][1]
-    numero=int(tabla.item(elemento)['values'][0].replace("-",""))
+    numero=tabla.item(elemento)['values'][0]
 
     
     conectar_BaseDeDatos(6) # Conexión a la base de datos (editar elemento)
@@ -929,12 +981,10 @@ def crear_documento():
     f=Formato()
     monto_en_palabras=f.numero_a_moneda_sunat(monto)
 
-    n=str(numero)
-
 
     if medio=='Cheque':
         context = {
-            "NUMERO": n[len(n)-5]+'-'+n[-4:],
+            "NUMERO": numero,
             "ASUNTO": asunto,
             "PERSONA": persona,
             "FECHA": fecha.strftime("%d-%m-%Y"),
@@ -947,7 +997,7 @@ def crear_documento():
         }
     elif medio=='Efectivo':
         context = {
-            "NUMERO": n[len(n)-5]+'-'+n[-4:],
+            "NUMERO": numero,
             "ASUNTO": asunto,
             "PERSONA": persona,
             "FECHA": fecha.strftime("%d-%m-%Y"),
@@ -960,7 +1010,7 @@ def crear_documento():
         }
     else:
         context = {
-            "NUMERO": n[len(n)-5]+'-'+n[-4:],
+            "NUMERO": numero,
             "ASUNTO": asunto,
             "PERSONA": persona,
             "FECHA": fecha.strftime("%d-%m-%Y"),
@@ -973,7 +1023,7 @@ def crear_documento():
         }
 
     documento.render(context)
-    documento.save(Path(filepath).parent / f"{n[len(n)-5]+'-'+n[-4:]}_{tipo}.docx")
+    documento.save(Path(filepath).parent / f"{numero}_{tipo}.docx")
     global rod
     rod =os.path.dirname(os.path.abspath(filepath))
 
@@ -987,9 +1037,71 @@ def imprimir_documento():
     attributes['pDevMode'].Duplex = 3 
     win32print.SetPrinter(handle, level, attributes, 0)
     win32print.GetPrinter(handle, level)['pDevMode'].Duplex
-    win32api.ShellExecute(0, "print", rod+"\\"+str(numero[len(numero)-5])+'-'+str(numero[-4:])+"_"+tipo+".docx", None,  ".",  0)
+    win32api.ShellExecute(0, "print", rod+"\\"+str(numero)+"_"+tipo+".docx", None,  ".",  0)
     win32print.ClosePrinter(handle)
 
+def inicializar_variables_exportar():
+    global tipo_var
+    global mes_var
+    global a_var
+    tipo_var=StringVar()
+    mes_var=StringVar()
+    a_var=StringVar()
+
+def inicializar_componentes_exportar():
+    
+    contenedorTipo=LabelFrame(contenedor_exportar, text="Tipo", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedorTipo.place(x=10, y=10, width=545, height=65)
+
+    contenedorMes=LabelFrame(contenedor_exportar, text="Mes", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedorMes.place(x=10, y=80, width=265, height=65)
+
+    contenedorA=LabelFrame(contenedor_exportar, text="Año", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedorA.place(x=290, y=80, width=265, height=65)
+
+    radioBotonIngresos=Radiobutton(contenedorTipo, text="Ingresos", font=("Helvetica", 13), variable=tipo_var, value="Ingreso", bg='#FFFFFF')
+    radioBotonIngresos.place(x=10, y=5)
+    radioBotonIngresos.select()
+
+    radioBotonEgresos=Radiobutton(contenedorTipo, text="Egresos", font=("Helvetica", 13), variable=tipo_var, value="Egreso", bg='#FFFFFF')
+    radioBotonEgresos.place(x=160, y=5)
+
+    def validacion_entradas(evento):
+        if len(entradaMes.get())>0 and len(entradaA.get())>0:
+            botonExportar['state']=NORMAL
+        else: botonExportar['state']=DISABLED
+
+    entradaMes=ttk.Combobox(contenedorMes, textvariable=mes_var, font=("Helvetica", 13), state='readonly', values=lista_meses)
+    entradaMes.place(x=10, y=5, width=245, height=32)
+    entradaMes.bind("<<ComboboxSelected>>", validacion_entradas)
+
+    entradaA=ttk.Combobox(contenedorA, textvariable=a_var, font=("Helvetica", 13), state='readonly', values=lista_a)
+    entradaA.place(x=10, y=5, width=245, height=32)
+    entradaA.bind("<<ComboboxSelected>>", validacion_entradas)
+
+    # Botones
+    botonCancelar=Button(contenedor_exportar, text="Cancelar", command=cerrar_seccion_exportar, font=("Helvetica", 13), borderwidth=3)
+    botonCancelar.place(x=370, y=600)
+    botonExportar=Button(contenedor_exportar, text="Exportar", command=exportar_datos, font=("Helvetica", 13), borderwidth=3)
+    botonExportar.place(x=470, y=600)
+    botonExportar['state']=DISABLED
+
+def cerrar_seccion_exportar():
+    entradaBuscar['state']=NORMAL
+    botonLimpiar['state']=NORMAL
+    combo_tipo['state']=NORMAL
+    contenedor_exportar.place_forget()
+    contenedor_operaciones.place(x=830, y=10, width=565, height=75)
+
+def exportar_datos():
+    global tipo
+    global mes
+    global anio
+    tipo=tipo_var.get()
+    mes=mes_var.get()
+    anio=a_var.get()
+    conectar_BaseDeDatos(7)
+    cerrar_seccion_exportar()
 
 def cerrar_ventanaPrincipal():
     if messagebox.askokcancel("Salir", "¿Desea Salir?"):
@@ -1041,23 +1153,34 @@ def imprimir_transaccion():
     global ncheque
     global monto
     global descripcion
-    numero=int(tabla.item(elemento)['values'][0].replace('-',''))
+    numero=tabla.item(elemento)['values'][0]
     tipo=tabla.item(elemento)['values'][1]
     asunto=tabla.item(elemento)['values'][2]
     persona=tabla.item(elemento)['values'][3]
     fecha=datetime.strptime(tabla.item(elemento)['values'][4], '%d-%m-%Y')
     medio=tabla.item(elemento)['values'][5]
     ncheque=tabla.item(elemento)['values'][6]
-    monto=tabla.item(elemento)['values'][7]
+    monto=int(tabla.item(elemento)['values'][7].replace(".",""))
     descripcion=tabla.item(elemento)['values'][8]
-    filepath=findfile(str(numero)+"_"+tipo+".docx", "\\")
-    if os.path.exists(filepath)==False:
-            crear_documento()
+    filepath=findfile(numero+"_"+tipo+".docx", "\\")
+    if filepath==None:
+        crear_documento()
     else:
         global rod
         rod =os.path.dirname(os.path.abspath(filepath))
         imprimir_documento()
     tabla.selection_remove(tabla.selection())
+
+def exportar_a_excel():
+    entradaBuscar['state']=DISABLED
+    botonBuscar['state']=DISABLED
+    botonLimpiar['state']=DISABLED
+    combo_tipo['state']=DISABLED
+    contenedor_operaciones.place_forget()
+    contenedor_exportar['text']="Exportación a Excel"
+    contenedor_exportar.place(x=830, y=10, width=565, height=660)
+    inicializar_variables_exportar()
+    inicializar_componentes_exportar()
 
 
 
@@ -1110,6 +1233,7 @@ contenedor_Tabla=Frame(app, bg='#EDB712')
 contenedor_Tabla.place(x=10, y=90, width=810, height=575)
 contenedor_campos=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
 contenedor_editor=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
+contenedor_exportar=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
 
 
 # Tabla
@@ -1151,7 +1275,7 @@ tabla.column('5', stretch=NO, minwidth=100, width=100)
 tabla.column('6', stretch=NO, minwidth=100, width=100)
 tabla.column('7', stretch=NO, minwidth=150, width=150)
 tabla.column('8', stretch=NO, minwidth=100, width=100)
-tabla.column('9', stretch=NO, minwidth=500, width=500)
+tabla.column('9', stretch=NO, minwidth=800, width=800)
 
 # Conexión con la base de datos (importación de datos)
 conectar_BaseDeDatos(1)
@@ -1160,6 +1284,7 @@ def deseleccionar_elemento(evento):
     tabla.selection_remove(tabla.selection())
     botonAgregarIngreso.place(x=20, y=10)
     botonAgregarEgreso.place(x=180, y=10)
+    botonExportarExcel.place(x=340, y=10)
     botonEditar.place_forget()
     botonImprimir.place_forget()
 tabla.bind("<ButtonRelease-3>", deseleccionar_elemento)
@@ -1167,6 +1292,7 @@ tabla.bind("<ButtonRelease-3>", deseleccionar_elemento)
 def mostrar_boton_editar(evento):
     botonAgregarIngreso.place_forget()
     botonAgregarEgreso.place_forget()
+    botonExportarExcel.place_forget()
     botonEditar.place(x=20, y=10)
     botonImprimir.place(x=180, y=10)
 tabla.bind("<ButtonRelease-1>", mostrar_boton_editar)
@@ -1209,6 +1335,8 @@ botonAgregarEgreso=Button(contenedor_operaciones, text="Agregar Egreso", command
 botonAgregarEgreso.place(x=180, y=10)
 botonEditar=Button(contenedor_operaciones, text="Editar", command=editar_transaccion, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
 botonImprimir=Button(contenedor_operaciones, text="Imprimir", command=imprimir_transaccion, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+botonExportarExcel=Button(contenedor_operaciones, text="Exportar a Excel", command=exportar_a_excel, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+botonExportarExcel.place(x=340, y=10)
 
 app.mainloop()
     
