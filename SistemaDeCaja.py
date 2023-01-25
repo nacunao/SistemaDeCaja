@@ -648,20 +648,26 @@ def inicializar_componentes(tipo):
     entrada2.place(x=10, y=5, width=525, height=32)
     entrada2_adicional=Entry(contenedor2, textvariable=personaOtra_var, font=("Helvetica", 13))
 
-    entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13))
+    # Validación entradas solo números
+    def validacion_numeros(entrada):
+        return entrada.isdigit()
+
+    validacionNumero=contenedor_campos.register(validacion_numeros)
+
+    entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
     entrada4.place(x=10, y=5, width=245, height=32)
 
-    locale.setlocale(locale.LC_ALL, 'es_CL.utf8')
     def mostrar_formato(*args):
         if len(entrada5.get())>0:
-            monto_var.set(locale.format_string("%d", int(entrada5.get()), grouping=True))
+            monto_var.set('{:,}'.format(int(entrada5.get())).replace(",","."))
 
     def quitar_formato(*args):
         if len(entrada5.get())>0:
             monto_var.set(entrada5.get().replace(".",""))
-    
+            entrada5['validate']="key"
+            entrada5['validatecommand']=(validacionNumero, '%S')
 
-    entrada5=Entry(contenedor5, textvariable=monto_var, font=("Helvetica", 13))
+    entrada5=Entry(contenedor5, textvariable=monto_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
     entrada5.place(x=10, y=5, width=245, height=32)
     entrada5.bind("<FocusOut>", mostrar_formato)
     entrada5.bind("<FocusIn>", quitar_formato)
@@ -802,11 +808,11 @@ def inicializar_componentes_editor(tipo):
     def validacion_datos(evento):
 
         if medio_var.get()=='Cheque':
-            if (len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada4.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c"))>0) and (entrada1.get()!=tabla.item(elemento)['values'][2] or entrada2.get()!=tabla.item(elemento)['values'][3] or entrada4.get()!=str(tabla.item(elemento)['values'][6]) or entrada5.get().replace('.','')!=tabla.item(elemento)['values'][7].replace('.','') or entrada6.get("1.0", "end-1c")!=tabla.item(elemento)['values'][8] or entrada3.get_date().strftime("%d-%m-%Y")!=tabla.item(elemento)['values'][4] or medio_var.get()!=tabla.item(elemento)['values'][5]) and entrada3.get_date().strftime("%Y")==tabla.item(elemento)['values'][4][-4:] and entrada5.get().isalpha==False:
+            if (len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada4.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c"))>0) and (entrada1.get()!=tabla.item(elemento)['values'][2] or entrada2.get()!=tabla.item(elemento)['values'][3] or entrada4.get()!=str(tabla.item(elemento)['values'][6]) or entrada5.get().replace('.','')!=tabla.item(elemento)['values'][7].replace('.','') or entrada6.get("1.0", "end-1c")!=tabla.item(elemento)['values'][8] or entrada3.get_date().strftime("%d-%m-%Y")!=tabla.item(elemento)['values'][4] or medio_var.get()!=tabla.item(elemento)['values'][5]) and entrada3.get_date().strftime("%Y")==tabla.item(elemento)['values'][4][-4:]:
                 botonGuardar['state']=NORMAL
             else: botonGuardar['state']=DISABLED
         else:
-            if len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c"))>0 and (entrada1.get()!=tabla.item(elemento)['values'][2] or entrada2.get()!=tabla.item(elemento)['values'][3] or entrada5.get().replace('.','')!=tabla.item(elemento)['values'][7].replace('.','') or entrada6.get("1.0", "end-1c")!=tabla.item(elemento)['values'][8] or entrada3.get_date().strftime("%d-%m-%Y")!=tabla.item(elemento)['values'][4] or medio_var.get()!=tabla.item(elemento)['values'][5]) and entrada3.get_date().strftime("%Y")==tabla.item(elemento)['values'][4][-4:] and entrada5.get().isalpha==False:
+            if len(entrada1.get())>0 and len(entrada2.get())>0 and len(entrada5.get())>0 and len(entrada6.get("1.0", "end-1c"))>0 and (entrada1.get()!=tabla.item(elemento)['values'][2] or entrada2.get()!=tabla.item(elemento)['values'][3] or entrada5.get().replace('.','')!=tabla.item(elemento)['values'][7].replace('.','') or entrada6.get("1.0", "end-1c")!=tabla.item(elemento)['values'][8] or entrada3.get_date().strftime("%d-%m-%Y")!=tabla.item(elemento)['values'][4] or medio_var.get()!=tabla.item(elemento)['values'][5]) and entrada3.get_date().strftime("%Y")==tabla.item(elemento)['values'][4][-4:]:
                 botonGuardar['state']=NORMAL
             else: botonGuardar['state']=DISABLED
 
@@ -854,17 +860,24 @@ def inicializar_componentes_editor(tipo):
     entrada2.place(x=10, y=5, width=525, height=32)
     entrada2.insert(0, tabla.item(elemento)['values'][3])
 
-    entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13))
+    # Validación entradas solo números
+    def validacion_numeros(entrada):
+        return entrada.isdigit()
+
+    validacionNumero=contenedor_campos.register(validacion_numeros)
+
+    entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
     entrada4.place(x=10, y=5, width=245, height=32)
 
-    locale.setlocale(locale.LC_ALL, 'es_CL.utf8')
     def mostrar_formato(*args):
         if len(entrada5.get())>0:
-            monto_var.set(locale.format_string("%d", int(entrada5.get()), grouping=True))
+            monto_var.set('{:,}'.format(int(entrada5.get())).replace(",","."))
 
     def quitar_formato(*args):
         if len(entrada5.get())>0:
             monto_var.set(entrada5.get().replace(".",""))
+            entrada5['validate']="key"
+            entrada5['validatecommand']=(validacionNumero, '%S')
     
     entrada5=Entry(contenedor5, textvariable=monto_var, font=("Helvetica", 13))
     entrada5.place(x=10, y=5, width=245, height=32)
