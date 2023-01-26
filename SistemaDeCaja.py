@@ -6,12 +6,14 @@ from datetime import *
 import locale
 import pandas as pd
 import xlsxwriter as xls
+from openpyxl import load_workbook
 
 # Librerías Interfaz Gráfica Tkinter
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
 from tkcalendar import dateentry
+from tkinter import font
 
 
 # Librería conexión base de datos por medio de mysql
@@ -52,7 +54,8 @@ lista_asunto_ingreso=[
     'APORTE PARTICULAR',
     'OTRO']
 lista_asunto_egreso=[
-    'AGUA'
+    'COPA PANCHO',
+    'AGUA',
     'REMUNERACIONES',
     'HONORARIOS',
     'IMPOSICIONES',
@@ -66,7 +69,7 @@ lista_asunto_egreso=[
     'CRONOMETRISTA',
     'DEUDA CONVENIO',
     'GASTOS COPA PANCHO',
-    'ELECTRICIDAD'
+    'ELECTRICIDAD',
     'IMPRENTA',
     'TRABAJO EXTRA',
     'TRANSPORTE',
@@ -79,7 +82,7 @@ lista_asunto_egreso=[
 
 # LISTAS RECIBIDO DE/ENVIADO A
 lista_recibido_de=[
-    'LIN DIAZ'
+    'LIN DIAZ',
     'SAMUEL BERNAL',
     'ERIKA BERNAL',
     'SEÑOR PANELLI',
@@ -99,6 +102,14 @@ lista_enviado_a=[
     'CLAUDIO OSORIO',
     'VERONICA SAMIT',
     'BRAULIO SASSO',
+    'MYRIAM VERDUGO',
+    'ARNALDO PANELLI',
+    'DELIA PANELLI',
+    'LUIS SALINAS',
+    'JAIME NEGRON',
+    'JAVIER ARENAS',
+    'PEDRO MELLA',
+    'JOSE GUERRA',
     'BANCO SANTANDER',
     'ANA MARIA GRANADA ALVAREZ',
     'LUIS SANCHEZ',
@@ -474,18 +485,25 @@ def conectar_BaseDeDatos(opcion):
         else: 
             data = pd.DataFrame({'Numero':lista_numero, 'Asunto':lista_asunto, 'Para':lista_persona, 'Fecha':lista_fecha, 'Medio':lista_medio, 'N° Cheque':lista_ncheque, 'Monto':lista_monto, 'Por concepto de':lista_descripcion})
 
-        filepath = findfile(tipo+"s_"+anio+".xlsx", "\\")
+        filepath = findfile(tipo+"s_"+anio+"_PLANTILLA.xlsx", "\\")
         if filepath==None:
-            filepath = findfile("plantilla_documento_ingreso.docx", "\\")
-            rod =os.path.dirname(os.path.abspath(filepath))
-            libro=xls.Workbook(rod+"\\"+tipo+"s_"+anio+".xlsx")
+            #filepath = findfile(tipo+"s_"+anio+"_PLANTILLA.xlsx", "\\")
+            libro=xls.Workbook(tipo+"s_"+anio+"_PLANTILLA.xlsx")
             libro.close()
-            with pd.ExcelWriter(rod+"\\"+tipo+"s_"+anio+".xlsx") as writer:
+            with pd.ExcelWriter(tipo+"s_"+anio+"_PLANTILLA.xlsx") as writer:
                 data.to_excel(writer, sheet_name=mes[5:])
         else:
-            rod =os.path.dirname(os.path.abspath(filepath))
-            with pd.ExcelWriter(rod+"\\"+tipo+"s_"+anio+".xlsx", mode="a", engine="openpyxl") as writer:
-                data.to_excel(writer, sheet_name=mes[5:])
+            rod = os.path.dirname(os.path.abspath(filepath))
+            wb = load_workbook(rod+"\\"+tipo+"s_"+anio+"_PLANTILLA.xlsx", read_only=True)
+
+            if not mes[5:] in wb.sheetnames:
+                try:
+                    with pd.ExcelWriter(rod+"\\"+tipo+"s_"+anio+"_PLANTILLA.xlsx", mode="a", engine="openpyxl") as writer:
+                        data.to_excel(writer, sheet_name=mes[5:])
+                except:
+                    messagebox.showerror(title="Error", message="Cierre el archivo excel "+tipo+"s_"+anio+"_PLANTILLA.xlsx antes de exportar el mes de "+mes[5:])
+
+            wb.close()
 
     conexion_bdd.close() # Se cierra la conexión a la base de datos remota
 
@@ -576,28 +594,28 @@ def inicializar_componentes(tipo):
 
 
     # Label Frame
-    contenedor0=LabelFrame(contenedor_campos, text="Número de folio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor0.place(x=10, y=10, width=175, height=65)
+    contenedor0=LabelFrame(contenedor_campos, text="Número de folio", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor0.place(x=10, y=10, width=230, height=65)
 
-    contenedor3=LabelFrame(contenedor_campos, text="Fecha", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor3.place(x=195, y=10, width=300, height=65)
+    contenedor3=LabelFrame(contenedor_campos, text="Fecha", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor3.place(x=250, y=10, width=340, height=65)
 
-    contenedor1=LabelFrame(contenedor_campos, text="Asunto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor1.place(x=10, y=80, width=545, height=105)
+    contenedor1=LabelFrame(contenedor_campos, text="Asunto", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor1.place(x=10, y=80, width=580, height=105)
 
     if tipo=='Ingreso':
-        contenedor2=LabelFrame(contenedor_campos, text="Recibido de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    else: contenedor2=LabelFrame(contenedor_campos, text="Enviado a", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor2.place(x=10, y=190, width=545, height=105)
+        contenedor2=LabelFrame(contenedor_campos, text="Recibido de", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    else: contenedor2=LabelFrame(contenedor_campos, text="Enviado a", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor2.place(x=10, y=190, width=580, height=105)
 
-    contenedor4=LabelFrame(contenedor_campos, text="Número de Cheque", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor4.place(x=10, y=370, width=265, height=65)
+    contenedor4=LabelFrame(contenedor_campos, text="Número de Cheque", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor4.place(x=10, y=370, width=285, height=65)
 
-    contenedor5=LabelFrame(contenedor_campos, text="Monto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor5.place(x=290, y=370, width=265, height=65)
+    contenedor5=LabelFrame(contenedor_campos, text="Monto", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor5.place(x=305, y=370, width=285, height=65)
 
-    contenedor6=LabelFrame(contenedor_campos, text="Por concepto de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor6.place(x=10, y=440, width=545, height=150)
+    contenedor6=LabelFrame(contenedor_campos, text="Por concepto de", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor6.place(x=10, y=440, width=580, height=150)
 
     # Entradas
     def obtener_numero():
@@ -609,13 +627,13 @@ def inicializar_componentes(tipo):
         numero_var.set(numero)
     def dateentryclick(evento):
         obtener_numero()
-    entrada3=dateentry.DateEntry(contenedor3, state='readonly', locale='es_CL', date_pattern='dd-mm-yyyy', width=50)
+    entrada3=dateentry.DateEntry(contenedor3, font=("Helvetica", 13), state='readonly', locale='es_CL', date_pattern='dd-mm-yyyy', width=50)
     entrada3.set_date(fecha_anterior)
     entrada3.bind("<<DateEntrySelected>>", dateentryclick)
-    entrada3.place(x=10, y=5, width=280, height=32)
+    entrada3.place(x=10, y=5, width=320, height=32)
     entrada3.config(headersbackground="#E62B0A", headersforeground="#ffffff", foreground="#000000", background="#ffffff")
     entrada0=Entry(contenedor0, textvariable=numero_var, font=("Helvetica", 13), state='readonly')
-    entrada0.place(x=10, y=5, width=160, height=32)
+    entrada0.place(x=10, y=5, width=210, height=32)
     obtener_numero()
 
 
@@ -623,21 +641,21 @@ def inicializar_componentes(tipo):
         if asunto_var.get() !='OTRO':
             entrada1_adicional.place_forget()
         else:
-            entrada1_adicional.place(x=10, y=45, width=525, height=32)
+            entrada1_adicional.place(x=10, y=45, width=560, height=32)
     entrada1=ttk.Combobox(contenedor1, textvariable=asunto_var, font=("Helvetica", 13), state='readonly')
     if tipo=="Ingreso":
         entrada1['values']=lista_asunto_ingreso
     else:
         entrada1['values']=lista_asunto_egreso
     entrada1.bind("<<ComboboxSelected>>", comboboxclick1)
-    entrada1.place(x=10, y=5, width=525, height=32)
+    entrada1.place(x=10, y=5, width=560, height=32)
     entrada1_adicional=Entry(contenedor1, textvariable=asuntoOtro_var, font=("Helvetica", 13))
 
     def comboboxclick2(evento):
         if persona_var.get() !='OTRO':
             entrada2_adicional.place_forget()
         else:
-            entrada2_adicional.place(x=10, y=45, width=525, height=32)
+            entrada2_adicional.place(x=10, y=45, width=560, height=32)
 
     entrada2=ttk.Combobox(contenedor2, textvariable=persona_var, font=("Helvetica", 13), state='readonly')
     if tipo=="Ingreso":
@@ -645,7 +663,7 @@ def inicializar_componentes(tipo):
     else:
         entrada2['values']=lista_enviado_a
     entrada2.bind("<<ComboboxSelected>>", comboboxclick2)
-    entrada2.place(x=10, y=5, width=525, height=32)
+    entrada2.place(x=10, y=5, width=560, height=32)
     entrada2_adicional=Entry(contenedor2, textvariable=personaOtra_var, font=("Helvetica", 13))
 
     # Validación entradas solo números
@@ -655,7 +673,7 @@ def inicializar_componentes(tipo):
     validacionNumero=contenedor_campos.register(validacion_numeros)
 
     entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
-    entrada4.place(x=10, y=5, width=245, height=32)
+    entrada4.place(x=10, y=5, width=265, height=32)
 
     def mostrar_formato(*args):
         if len(entrada5.get())>0:
@@ -668,24 +686,24 @@ def inicializar_componentes(tipo):
             entrada5['validatecommand']=(validacionNumero, '%S')
 
     entrada5=Entry(contenedor5, textvariable=monto_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
-    entrada5.place(x=10, y=5, width=245, height=32)
+    entrada5.place(x=10, y=5, width=265, height=32)
     entrada5.bind("<FocusOut>", mostrar_formato)
     entrada5.bind("<FocusIn>", quitar_formato)
 
 
     barra1=Scrollbar(contenedor6)
-    barra1.place(x=515, y=5, height=110)
+    barra1.place(x=555, y=5, height=110)
     entrada6=Text(contenedor6, wrap=WORD, font=("Helvetica", 13), yscrollcommand = barra1.set)
-    entrada6.place(x=10, y=5, width=500, height=110)
+    entrada6.place(x=10, y=5, width=540, height=110)
     barra1.config(command=entrada6.yview)
 
     # Label Frame
-    contenedorRB=LabelFrame(contenedor_campos, text="Medio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedorRB.place(x=10, y=300, width=545, height=65)
+    contenedorRB=LabelFrame(contenedor_campos, text="Medio", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedorRB.place(x=10, y=300, width=580, height=65)
 
     def mostrar_contenedor4():
         if medio_var.get()=='Cheque':
-            contenedor4.place(x=10, y=370, width=265, height=65)
+            contenedor4.place(x=10, y=370, width=285, height=65)
         else: contenedor4.place_forget()
 
     # Botones radio
@@ -703,13 +721,13 @@ def inicializar_componentes(tipo):
     # CheckBox
     checkBox=Checkbutton(contenedor_campos, text="¿Desea imprimir los datos del "+tipo+"?", variable=imprimir, onvalue=TRUE, offvalue=FALSE, font=("Helvetica", 12))
     checkBox.configure(bg='#FFFFFF')
-    checkBox.place(x=10, y=600)
+    checkBox.place(x=10, y=610)
 
     # Botones
     botonCancelar=Button(contenedor_campos, text="Cancelar", command=lambda:cerrar_seccion_agregar(), font=("Helvetica", 13), borderwidth=3)
-    botonCancelar.place(x=370, y=600)
+    botonCancelar.place(x=410, y=610)
     botonGuardar=Button(contenedor_campos, text="Guardar", command=lambda:crearTransaccion(tipo), font=("Helvetica", 13), borderwidth=3)
-    botonGuardar.place(x=470, y=600)
+    botonGuardar.place(x=510, y=610)
     botonGuardar['state']=DISABLED
 
 
@@ -717,8 +735,9 @@ def cerrar_seccion_agregar():
     entradaBuscar['state']=NORMAL
     botonLimpiar['state']=NORMAL
     combo_tipo['state']=NORMAL
+    contenedor4.place_forget()
     contenedor_campos.place_forget()
-    contenedor_operaciones.place(x=830, y=10, width=565, height=75)
+    contenedor_operaciones.place(x=890, y=10, width=600, height=75)
     
 def crearTransaccion(t):
     global tipo
@@ -798,9 +817,9 @@ def inicializar_componentes_editor(tipo):
 
     # Botones
     botonCancelar=Button(contenedor_editor, text="Cancelar", command=cerrar_seccion_editar, font=("Helvetica", 13), borderwidth=3)
-    botonCancelar.place(x=370, y=560)
+    botonCancelar.place(x=410, y=550)
     botonGuardar=Button(contenedor_editor, text="Guardar", command=guardar_cambios_edicion, font=("Helvetica", 13), borderwidth=3)
-    botonGuardar.place(x=470, y=560)
+    botonGuardar.place(x=510, y=550)
     botonGuardar['state']=DISABLED
 
     medio_var.set(tabla.item(elemento)['values'][5])
@@ -819,45 +838,45 @@ def inicializar_componentes_editor(tipo):
     app.bind('<KeyRelease>', validacion_datos)
 
     # Label Frame
-    contenedor0=LabelFrame(contenedor_editor, text="Número de folio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor0.place(x=10, y=10, width=175, height=65)
+    contenedor0=LabelFrame(contenedor_editor, text="Número de folio", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor0.place(x=10, y=10, width=230, height=65)
 
-    contenedor3=LabelFrame(contenedor_editor, text="Fecha", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor3.place(x=195, y=10, width=300, height=65)
+    contenedor3=LabelFrame(contenedor_editor, text="Fecha", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor3.place(x=250, y=10, width=340, height=65)
 
-    contenedor1=LabelFrame(contenedor_editor, text="Asunto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor1.place(x=10, y=80, width=545, height=65)
+    contenedor1=LabelFrame(contenedor_editor, text="Asunto", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor1.place(x=10, y=80, width=580, height=65)
 
     if tipo=='Ingreso':
-        contenedor2=LabelFrame(contenedor_editor, text="Recibido de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    else: contenedor2=LabelFrame(contenedor_editor, text="Enviado a", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor2.place(x=10, y=150, width=545, height=65)
+        contenedor2=LabelFrame(contenedor_editor, text="Recibido de", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    else: contenedor2=LabelFrame(contenedor_editor, text="Enviado a", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor2.place(x=10, y=150, width=580, height=65)
 
-    contenedor4=LabelFrame(contenedor_editor, text="Número de Cheque", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
+    contenedor4=LabelFrame(contenedor_editor, text="Número de Cheque", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
 
-    contenedor5=LabelFrame(contenedor_editor, text="Monto", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor5.place(x=290, y=290, width=265, height=65)
+    contenedor5=LabelFrame(contenedor_editor, text="Monto", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor5.place(x=305, y=290, width=285, height=65)
 
-    contenedor6=LabelFrame(contenedor_editor, text="Por concepto de", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedor6.place(x=10, y=360, width=545, height=150)
+    contenedor6=LabelFrame(contenedor_editor, text="Por concepto de", font=("Helvetica", 13), bg='#D4CDD6', fg='#02020D')
+    contenedor6.place(x=10, y=360, width=580, height=150)
 
 
-    entrada3=dateentry.DateEntry(contenedor3, state='readonly', locale='es_CL', date_pattern='dd-mm-yyyy', width=50)
+    entrada3=dateentry.DateEntry(contenedor3, font=("Helvetica", 13), state='readonly', locale='es_CL', date_pattern='dd-mm-yyyy', width=50)
     entrada3.bind("<<DateEntrySelected>>", validacion_datos)
-    entrada3.place(x=10, y=5, width=280, height=32)
+    entrada3.place(x=10, y=5, width=320, height=32)
     entrada3.set_date(tabla.item(elemento)['values'][4])
     
 
     entrada0=Entry(contenedor0, textvariable=numero_var, font=("Helvetica", 13), state='readonly')
-    entrada0.place(x=10, y=5, width=160, height=32)
+    entrada0.place(x=10, y=5, width=210, height=32)
     numero_var.set(tabla.item(elemento)['values'][0])
 
     entrada1=Entry(contenedor1, textvariable=asunto_var, font=("Helvetica", 13))
-    entrada1.place(x=10, y=5, width=525, height=32)
+    entrada1.place(x=10, y=5, width=560, height=32)
     entrada1.insert(0, tabla.item(elemento)['values'][2])
 
     entrada2=Entry(contenedor2, textvariable=persona_var, font=("Helvetica", 13))
-    entrada2.place(x=10, y=5, width=525, height=32)
+    entrada2.place(x=10, y=5, width=560, height=32)
     entrada2.insert(0, tabla.item(elemento)['values'][3])
 
     # Validación entradas solo números
@@ -867,7 +886,7 @@ def inicializar_componentes_editor(tipo):
     validacionNumero=contenedor_campos.register(validacion_numeros)
 
     entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
-    entrada4.place(x=10, y=5, width=245, height=32)
+    entrada4.place(x=10, y=5, width=265, height=32)
 
     def mostrar_formato(*args):
         if len(entrada5.get())>0:
@@ -880,26 +899,26 @@ def inicializar_componentes_editor(tipo):
             entrada5['validatecommand']=(validacionNumero, '%S')
     
     entrada5=Entry(contenedor5, textvariable=monto_var, font=("Helvetica", 13))
-    entrada5.place(x=10, y=5, width=245, height=32)
+    entrada5.place(x=10, y=5, width=265, height=32)
     entrada5.insert(0, tabla.item(elemento)['values'][7])
     entrada5.bind("<FocusOut>", mostrar_formato)
     entrada5.bind("<FocusIn>", quitar_formato)
 
 
     barra1=Scrollbar(contenedor6)
-    barra1.place(x=515, y=5, height=110)
+    barra1.place(x=555, y=5, height=110)
     entrada6=Text(contenedor6, wrap=WORD, font=("Helvetica", 13), yscrollcommand = barra1.set)
-    entrada6.place(x=10, y=5, width=500, height=110)
+    entrada6.place(x=10, y=5, width=540, height=110)
     entrada6.insert("1.0", tabla.item(elemento)['values'][8])
     barra1.config(command=entrada6.yview)
 
     # Medio
     contenedorMedio=LabelFrame(contenedor_editor, text="Medio", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedorMedio.place(x=10, y=220, width=545, height=65)  
+    contenedorMedio.place(x=10, y=220, width=580, height=65)  
 
     def mostrar_contenedor4():
         if medio_var.get()=='Cheque':
-            contenedor4.place(x=10, y=290, width=265, height=65)
+            contenedor4.place(x=10, y=290, width=285, height=65)
             if len(entrada4.get())>0:
                 entrada4.delete(0, 'end')
             entrada4.insert(0, str(tabla.item(elemento)['values'][6]))
@@ -930,7 +949,7 @@ def inicializar_componentes_editor(tipo):
     # CheckBox
     checkBox=Checkbutton(contenedor_editor, text="¿Desea imprimir los datos del "+tipo+"?", variable=imprimir, onvalue=TRUE, offvalue=FALSE, font=("Helvetica", 12))
     checkBox.configure(bg='#FFFFFF')
-    checkBox.place(x=10, y=560)
+    checkBox.place(x=10, y=550)
 
 
 def cerrar_seccion_editar():
@@ -939,10 +958,11 @@ def cerrar_seccion_editar():
     combo_tipo['state']=NORMAL
     contenedor4.place_forget()
     contenedor_editor.place_forget()
-    contenedor_operaciones.place(x=830, y=10, width=565, height=75)
+    contenedor_operaciones.place(x=890, y=10, width=600, height=75)
     tabla.selection_remove(tabla.selection())
     botonAgregarIngreso.place(x=20, y=10)
     botonAgregarEgreso.place(x=180, y=10)
+    botonExportarExcel.place(x=340, y=10)
     botonEditar.place_forget()
     botonImprimir.place_forget()
 
@@ -1064,20 +1084,20 @@ def inicializar_variables_exportar():
 def inicializar_componentes_exportar():
     
     contenedorTipo=LabelFrame(contenedor_exportar, text="Tipo", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedorTipo.place(x=10, y=10, width=545, height=65)
+    contenedorTipo.place(x=10, y=10, width=240, height=65)
 
     contenedorMes=LabelFrame(contenedor_exportar, text="Mes", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedorMes.place(x=10, y=80, width=265, height=65)
+    contenedorMes.place(x=260, y=10, width=220, height=65)
 
     contenedorA=LabelFrame(contenedor_exportar, text="Año", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
-    contenedorA.place(x=290, y=80, width=265, height=65)
+    contenedorA.place(x=490, y=10, width=100, height=65)
 
     radioBotonIngresos=Radiobutton(contenedorTipo, text="Ingresos", font=("Helvetica", 13), variable=tipo_var, value="Ingreso", bg='#FFFFFF')
     radioBotonIngresos.place(x=10, y=5)
     radioBotonIngresos.select()
 
     radioBotonEgresos=Radiobutton(contenedorTipo, text="Egresos", font=("Helvetica", 13), variable=tipo_var, value="Egreso", bg='#FFFFFF')
-    radioBotonEgresos.place(x=160, y=5)
+    radioBotonEgresos.place(x=130, y=5)
 
     def validacion_entradas(evento):
         if len(entradaMes.get())>0 and len(entradaA.get())>0:
@@ -1085,18 +1105,18 @@ def inicializar_componentes_exportar():
         else: botonExportar['state']=DISABLED
 
     entradaMes=ttk.Combobox(contenedorMes, textvariable=mes_var, font=("Helvetica", 13), state='readonly', values=lista_meses)
-    entradaMes.place(x=10, y=5, width=245, height=32)
+    entradaMes.place(x=10, y=5, width=200, height=32)
     entradaMes.bind("<<ComboboxSelected>>", validacion_entradas)
 
     entradaA=ttk.Combobox(contenedorA, textvariable=a_var, font=("Helvetica", 13), state='readonly', values=lista_a)
-    entradaA.place(x=10, y=5, width=245, height=32)
+    entradaA.place(x=10, y=5, width=80, height=32)
     entradaA.bind("<<ComboboxSelected>>", validacion_entradas)
 
     # Botones
     botonCancelar=Button(contenedor_exportar, text="Cancelar", command=cerrar_seccion_exportar, font=("Helvetica", 13), borderwidth=3)
-    botonCancelar.place(x=370, y=600)
+    botonCancelar.place(x=410, y=100)
     botonExportar=Button(contenedor_exportar, text="Exportar", command=exportar_datos, font=("Helvetica", 13), borderwidth=3)
-    botonExportar.place(x=470, y=600)
+    botonExportar.place(x=510, y=100)
     botonExportar['state']=DISABLED
 
 def cerrar_seccion_exportar():
@@ -1104,7 +1124,7 @@ def cerrar_seccion_exportar():
     botonLimpiar['state']=NORMAL
     combo_tipo['state']=NORMAL
     contenedor_exportar.place_forget()
-    contenedor_operaciones.place(x=830, y=10, width=565, height=75)
+    contenedor_operaciones.place(x=890, y=10, width=600, height=75)
 
 def exportar_datos():
     global tipo
@@ -1127,7 +1147,7 @@ def agregar_ingreso():
     combo_tipo['state']=DISABLED
     contenedor_operaciones.place_forget()
     contenedor_campos['text']="Ingreso"
-    contenedor_campos.place(x=830, y=10, width=565, height=660)
+    contenedor_campos.place(x=890, y=10, width=600, height=680)
     inicializar_variables()
     inicializar_componentes("Ingreso")
 
@@ -1138,7 +1158,7 @@ def agregar_egreso():
     combo_tipo['state']=DISABLED
     contenedor_operaciones.place_forget()
     contenedor_campos['text']="Egreso"
-    contenedor_campos.place(x=830, y=10, width=565, height=660)
+    contenedor_campos.place(x=890, y=10, width=600, height=680)
     inicializar_variables()
     inicializar_componentes("Egreso")
 
@@ -1151,7 +1171,7 @@ def editar_transaccion():
     elemento=tabla.selection()[0]
     contenedor_operaciones.place_forget()
     contenedor_editor['text']="Editor "+tabla.item(elemento)['values'][1]
-    contenedor_editor.place(x=830, y=10, width=565, height=660)
+    contenedor_editor.place(x=890, y=10, width=600, height=680)
     inicializar_variables_editor()
     inicializar_componentes_editor(tabla.item(elemento)['values'][1])
 
@@ -1191,7 +1211,7 @@ def exportar_a_excel():
     combo_tipo['state']=DISABLED
     contenedor_operaciones.place_forget()
     contenedor_exportar['text']="Exportación a Excel"
-    contenedor_exportar.place(x=830, y=10, width=565, height=660)
+    contenedor_exportar.place(x=890, y=10, width=600, height=180)
     inicializar_variables_exportar()
     inicializar_componentes_exportar()
 
@@ -1204,12 +1224,12 @@ def buscar_persona():
 def limpiar_tabla():
     entradaBuscar.delete(0, 'end')
     filtroTipo_var.set('Todos')
-    contenedor_operaciones.place(x=830, y=10, width=565, height=75)
+    contenedor_operaciones.place(x=890, y=10, width=600, height=75)
     conectar_BaseDeDatos(4)
 
 def filtrar_tabla(evento):
     if filtroTipo_var.get()=='Todos' and busqueda_var.get()=='':
-        contenedor_operaciones.place(x=830, y=10, width=565, height=75)
+        contenedor_operaciones.place(x=890, y=10, width=600, height=75)
     else:
         contenedor_operaciones.place_forget()
     conectar_BaseDeDatos(5)
@@ -1223,8 +1243,8 @@ def anular_elemento():
 
 app=Tk()
 app.title("Sistema de Caja")
-width = 1400 # ancho de la ventana
-height = 675 # alto de la ventana
+width = 1500 # ancho de la ventana
+height = 700 # alto de la ventana
 x = 10
 y = 10
 app.geometry(f'{width}x{height}+{int(x)}+{int(y)}')
@@ -1233,17 +1253,19 @@ app.configure(bg='#FFFFFF')
 app.iconbitmap(sys.executable)
 app.protocol("WM_DELETE_WINDOW", cerrar_ventanaPrincipal)
 
+app.option_add("*TCombobox*Listbox*Font", font.Font(family="Helvetica", size=13))
+
 
 # Frames: Contenedores dentro de la ventana que contienen los elementos
 contenedor_Buscador=LabelFrame(app, text="Buscador Asunto", font=('Helvetica', 12), bg='#8297BC', fg='#FFFFFF')
-contenedor_Buscador.place(x=10, y=10, width=575, height=75)
+contenedor_Buscador.place(x=10, y=10, width=640, height=75)
 contenedor_FiltroTipo=LabelFrame(app, text="Filtrar por tipo", font=('Helvetica', 12), bg='#C5A97B', fg='#FFFFFF')
-contenedor_FiltroTipo.place(x=600, y=10, width=220, height=75)
+contenedor_FiltroTipo.place(x=660, y=10, width=220, height=75)
 
 contenedor_operaciones=LabelFrame(app, text="Operaciones", font=('Helvetica', 12), bg='#E64611', fg='#FFFFFF')
-contenedor_operaciones.place(x=830, y=10, width=565, height=75)
+contenedor_operaciones.place(x=890, y=10, width=600, height=75)
 contenedor_Tabla=Frame(app, bg='#EDB712')
-contenedor_Tabla.place(x=10, y=90, width=810, height=575)
+contenedor_Tabla.place(x=10, y=90, width=870, height=600)
 contenedor_campos=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
 contenedor_editor=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
 contenedor_exportar=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
@@ -1254,19 +1276,19 @@ global tabla
 global barra1
 global barra2
 tabla = ttk.Treeview(contenedor_Tabla, selectmode='extended')
-tabla.place(x=10, y=10, width=770, height=535)
+tabla.place(x=10, y=10, width=830, height=560)
 tabla['columns']=("1", "2", "3", "4", "5", "6", "7", "8", "9")
 tabla['show']='headings'
 barra1=Scrollbar(contenedor_Tabla, orient=HORIZONTAL, command=tabla.xview)
-barra1.place(x=10, y=550, width=770)
+barra1.place(x=10, y=575, width=830)
 barra2=Scrollbar(contenedor_Tabla, orient=VERTICAL, command=tabla.yview)
-barra2.place(x=785, y=10, height=535)
+barra2.place(x=845, y=10, height=560)
 
 tabla.configure(xscrollcommand=barra1.set, yscrollcommand=barra2.set)
 
 estilo_tabla=ttk.Style()
-estilo_tabla.configure('Treeview.Heading', font=('Helvetica', 11), rowheigth=40)
-estilo_tabla.configure('Treeview', font=('Helvetica', 11), rowheigth=40)
+estilo_tabla.configure('Treeview.Heading', font=('Helvetica', 12), rowheigth=50)
+estilo_tabla.configure('Treeview', font=('Helvetica', 12), rowheigth=50)
 estilo_tabla.map('Treeview', background=[('selected', 'silver')])
 
 
@@ -1320,7 +1342,7 @@ def habilitar_boton(evento):
 # Entradas
 global entradaBuscar
 entradaBuscar=Entry(contenedor_Buscador, textvariable=busqueda_var)
-entradaBuscar.place(x=20, y=10, width=350, height=32)
+entradaBuscar.place(x=20, y=10, width=425, height=32)
 app.bind('<KeyRelease>', habilitar_boton)
 
 
@@ -1334,21 +1356,21 @@ combo_tipo.bind('<<ComboboxSelected>>', filtrar_tabla)
 
 
 # Botones
-botonBuscar=Button(contenedor_Buscador, text="Buscar", command=buscar_persona, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
-botonBuscar.place(x=400, y=10)
+botonBuscar=Button(contenedor_Buscador, text="Buscar", command=buscar_persona, font=("Helvetica", 12), bg='#FFFFFF')
+botonBuscar.place(x=475, y=10)
 botonBuscar['state']=DISABLED
-botonLimpiar=Button(contenedor_Buscador, text="Limpiar", command=limpiar_tabla, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
-botonLimpiar.place(x=475, y=10)
+botonLimpiar=Button(contenedor_Buscador, text="Limpiar", command=limpiar_tabla, font=("Helvetica", 12), bg='#FFFFFF')
+botonLimpiar.place(x=550, y=10)
 
 
 
-botonAgregarIngreso=Button(contenedor_operaciones, text="Agregar Ingreso", command=agregar_ingreso, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+botonAgregarIngreso=Button(contenedor_operaciones, text="Agregar Ingreso", command=agregar_ingreso, font=("Helvetica", 12), bg='#FFFFFF')
 botonAgregarIngreso.place(x=20, y=10)
-botonAgregarEgreso=Button(contenedor_operaciones, text="Agregar Egreso", command=agregar_egreso, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+botonAgregarEgreso=Button(contenedor_operaciones, text="Agregar Egreso", command=agregar_egreso, font=("Helvetica", 12), bg='#FFFFFF')
 botonAgregarEgreso.place(x=180, y=10)
-botonEditar=Button(contenedor_operaciones, text="Editar", command=editar_transaccion, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
-botonImprimir=Button(contenedor_operaciones, text="Imprimir", command=imprimir_transaccion, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
-botonExportarExcel=Button(contenedor_operaciones, text="Exportar a Excel", command=exportar_a_excel, font=("Helvetica", 12), bg='#FFFFFF', borderwidth=0)
+botonEditar=Button(contenedor_operaciones, text="Editar", command=editar_transaccion, font=("Helvetica", 12), bg='#FFFFFF')
+botonImprimir=Button(contenedor_operaciones, text="Imprimir", command=imprimir_transaccion, font=("Helvetica", 12), bg='#FFFFFF')
+botonExportarExcel=Button(contenedor_operaciones, text="Exportar a Excel", command=exportar_a_excel, font=("Helvetica", 12), bg='#FFFFFF')
 botonExportarExcel.place(x=340, y=10)
 
 app.mainloop()
