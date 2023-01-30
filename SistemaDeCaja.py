@@ -17,7 +17,8 @@ from tkinter import font
 
 # Librería conexión base de datos por medio de mysql
 #import mysql.connector
-import pymysql
+#import pymysql
+import MySQLdb
 
 # Librerías edición docx
 from pathlib import Path
@@ -315,232 +316,206 @@ DB_NAME = 'administracion-ingresos-egresos'
 
 #---------------------------- Conexión a la base de datos remota ----------------------
 def conectar_BaseDeDatos(opcion):
-    try:
-        conexion_bdd = pymysql.connect(
-            user=DB_USER, # Usuario
-            password=DB_USER_PASSWORD, # Contraseña
-            host=DB_HOST, # Host
-            database=DB_NAME, # Nombre de la base de datos
-            cursorclass=pymysql.cursors.DictCursor,
-            ssl={"rejectUnauthorized":False}
-            ) 
+    conexion_bdd = MySQLdb.connect(
+        user=DB_USER, # Usuario
+        password=DB_USER_PASSWORD, # Contraseña
+        host=DB_HOST, # Host
+        database=DB_NAME, # Nombre de la base de datos
+        ssl={"rejectUnauthorized":False}
+        )
 
-        # Obtener número de folio
-        if opcion==0:
-            mycursor=conexion_bdd.cursor()
-            mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE `numero` LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipoT)+"'") # Sentencia MYSQL: Se cuentan todos los ingresos o egresos de un mismo año
-            fila = mycursor.fetchall()
-            global numero
-            ne=int(fila[0]['count(*)'])
-            if ne==0:
-                numero="000-"+str(fecha.year)
+    # Obtener número de folio
+    if opcion==0:
+        mycursor=conexion_bdd.cursor()
+        mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE `numero` LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipoT)+"'") # Sentencia MYSQL: Se cuentan todos los ingresos o egresos de un mismo año
+        fila = mycursor.fetchall()
+        global numero
+        ne=int(fila[0][0])
+        if ne==0:
+            numero="000-"+str(fecha.year)
+        else:
+            if ne>=1 and ne<=9:
+                numero = "00"+str(fila[0][0])+"-"+str(fecha.year)
+            elif ne>=11 and ne<=99:
+                numero = "0"+str(fila[0][0])+"-"+str(fecha.year)
             else:
-                if ne>=1 and ne<=9:
-                    numero = "00"+str(fila[0]['count(*)'])+"-"+str(fecha.year)
-                elif ne>=11 and ne<=99:
-                    numero = "0"+str(fila[0]['count(*)'])+"-"+str(fecha.year)
-                else:
-                    numero = str(fila[0]['count(*)'])+"-"+str(fecha.year)
+                numero = str(fila[0][0])+"-"+str(fecha.year)
 
-        # Importar la base de datos
-        elif opcion==1:
-            mycursor = conexion_bdd.cursor()
-            query="SELECT * FROM Transaccion WHERE `tipo` LIKE 'Ingreso'"
-            mycursor.execute(query) 
-            fila = mycursor.fetchall()
-
-            # Se insertan en la tabla todos los elementos de la base de datos
-            for dato in fila:
-                if dato['nCheque']!=0:
-                    tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-                else: tabla.insert('', 'end', values=(dato['fecha'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-
-            mycursor = conexion_bdd.cursor()
-            query="SELECT * FROM Transaccion WHERE `tipo` LIKE 'Egreso'"
-            mycursor.execute(query) 
-            fila = mycursor.fetchall()
-
-            # Se insertan en la tabla todos los elementos de la base de datos
-            for dato in fila:
-                if dato['nCheque']!=0:
-                    tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-                else: tabla.insert('', 'end', values=(dato['fecha'], dato['tipo'], dato['sunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
+    # Importar la base de datos
+    elif opcion==1:
+        mycursor = conexion_bdd.cursor()
+        query="SELECT * FROM Transaccion ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC"
+        mycursor.execute(query) 
+        fila = mycursor.fetchall()
 
 
-        # Agregar elemento a la base de datos
-        elif opcion==2:
-            sql = "INSERT INTO Transaccion (numero, tipo, asunto, persona, fecha, medio, nCheque, monto, descripcion) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)" # Sentenica MYSQL: Se inserta la fila nueva con sus datos
-            valores = (numero, tipo, asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion)
+        for dato in fila:
+            if dato[0]!=0:
+                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
 
 
-            mycursor = conexion_bdd.cursor()
-            mycursor.execute(sql, valores)
-            conexion_bdd.commit()
+    # Agregar elemento a la base de datos
+    elif opcion==2:
+        sql = "INSERT INTO Transaccion (numero, tipo, asunto, persona, fecha, medio, nCheque, monto, descripcion) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)" # Sentenica MYSQL: Se inserta la fila nueva con sus datos
+        valores = (numero, tipo, asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion)
 
-            # El elemento nuevo se inserta en la tabla para mantener ésta actualizada
-            if ncheque!=0:
-                tabla.insert('', 'end', values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
-            else: tabla.insert('', 'end', values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
 
-        # Buscar en la base de datos por asunto
-        elif opcion==3:
-            # Se hace la busqueda sí se ingreso una cadena de largo mayor a 2 carácteres 
-            if len(busqueda_var.get())>2:
-                tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
-                mycursor = conexion_bdd.cursor()
-                if busqueda_var.get()=='':
-                    if filtroTipo_var.get()!='Todos':
-                        mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"'") # Sentencia MYSQL: Se seleccionan los elementos del tipo seleccionado
-                        if filtroTipo_var.get()=='Ingreso':
-                            tabla.heading('4', text="Recibido de", anchor=W)
-                        else: tabla.heading('4', text="Enviado a", anchor=W)
-                    else:
-                        mycursor.execute("SELECT * FROM Transaccion")
-                        tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
-                else:
-                    if filtroTipo_var.get()!='Todos':
-                        mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `asunto` = '"+busqueda_var.get()+"'")
-                        if filtroTipo_var.get()=='Ingreso':
-                            tabla.heading('4', text="Recibido de", anchor=W)
-                        else: tabla.heading('4', text="Enviado a", anchor=W)
-                    else:
-                        mycursor.execute("SELECT * FROM Transaccion WHERE `asunto` LIKE '"+busqueda_var.get()+"'")
-                        tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
-                fila = mycursor.fetchall()
-                # Se insertan en la tabla los datos de la búsqueda
-                for dato in fila:
-                    if dato['nCheque']!=0:
-                        tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-                    else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-        
-        # Limpiar busqueda de la base de datos
-        elif opcion==4:
-            tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
-            tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
-            mycursor = conexion_bdd.cursor()
-            query="SELECT * FROM Transaccion WHERE `tipo` LIKE 'Ingreso'"
-            mycursor.execute(query) 
-            fila = mycursor.fetchall()
+        mycursor = conexion_bdd.cursor()
+        mycursor.execute(sql, valores)
+        conexion_bdd.commit()
 
-            # Se insertan en la tabla todos los elementos de la base de datos
-            for dato in fila:
-                if dato['nCheque']!=0:
-                    tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-                else: tabla.insert('', 'end', values=(dato['fecha'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
+        # El elemento nuevo se inserta en la tabla para mantener ésta actualizada
+        if ncheque!=0:
+            tabla.insert('', 'end', values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
+        else: tabla.insert('', 'end', values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
 
-            mycursor = conexion_bdd.cursor()
-            query="SELECT * FROM Transaccion WHERE `tipo` LIKE 'Egreso'"
-            mycursor.execute(query) 
-            fila = mycursor.fetchall()
-
-            # Se insertan en la tabla todos los elementos de la base de datos
-            for dato in fila:
-                if dato['nCheque']!=0:
-                    tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-                else: tabla.insert('', 'end', values=(dato['fecha'], dato['tipo'], dato['sunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-
-        # Filtrar Tabla
-        elif opcion==5:
+    # Buscar en la base de datos por asunto
+    elif opcion==3:
+        # Se hace la busqueda sí se ingreso una cadena de largo mayor a 2 carácteres 
+        if len(busqueda_var.get())>2:
             tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
             mycursor = conexion_bdd.cursor()
             if busqueda_var.get()=='':
                 if filtroTipo_var.get()!='Todos':
-                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"'") # Sentencia MYSQL: Se seleccionan los elementos del tipo seleccionado
+                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC") # Sentencia MYSQL: Se seleccionan los elementos del tipo seleccionado
                     if filtroTipo_var.get()=='Ingreso':
                         tabla.heading('4', text="Recibido de", anchor=W)
                     else: tabla.heading('4', text="Enviado a", anchor=W)
                 else:
-                    mycursor.execute("SELECT * FROM Transaccion")
+                    mycursor.execute("SELECT * FROM Transaccion ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
                     tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
             else:
                 if filtroTipo_var.get()!='Todos':
-                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `asunto` = '"+busqueda_var.get()+"'")
+                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `asunto` = '"+busqueda_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
                     if filtroTipo_var.get()=='Ingreso':
                         tabla.heading('4', text="Recibido de", anchor=W)
                     else: tabla.heading('4', text="Enviado a", anchor=W)
                 else:
-                    mycursor.execute("SELECT * FROM Transaccion WHERE `asunto` LIKE '"+busqueda_var.get()+"'")
+                    mycursor.execute("SELECT * FROM Transaccion WHERE `asunto` LIKE '"+busqueda_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
                     tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
             fila = mycursor.fetchall()
-            
-            # Se insertan en la tabla los datos seleccionados
+            # Se insertan en la tabla los datos de la búsqueda
             for dato in fila:
-                if dato['nCheque']!=0:
-                    tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-                else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
+                if dato[6]!=0:
+                    tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+                else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+    
+    # Limpiar busqueda de la base de datos
+    elif opcion==4:
+        tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
+        tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
+        mycursor = conexion_bdd.cursor()
+        query="SELECT * FROM Transaccion ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC"
+        mycursor.execute(query) 
+        fila = mycursor.fetchall()
 
-        # Editar elemento
-        elif opcion==6:
-            sql = "UPDATE Transaccion SET `asunto` = %s, `persona` = %s, `fecha` = %s, `medio` = %s, `nCheque` = %s, `monto` = %s, `descripcion` = %s WHERE `numero` = %s AND `tipo` = %s"
-            valores = (asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion, numero, tipo)
-            
-            mycursor = conexion_bdd.cursor()
-            mycursor.execute(sql, valores)
-            conexion_bdd.commit()
+        # Se insertan en la tabla todos los elementos de la base de datos
+        for dato in fila:
+            if dato[6]!=0:
+                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
 
 
-            if medio=='Cheque':
-                tabla.item(elemento, values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
-            else: tabla.item(elemento, values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
-        
-        # Exportar datos a excel
-        else:
-            mycursor = conexion_bdd.cursor()
-            mycursor.execute("SELECT * FROM Transaccion WHERE MONTH(fecha) = "+mes[0:2]+" AND YEAR(fecha) = "+anio+" AND `tipo` = '"+tipo+"'")
-            fila = mycursor.fetchall()
-
-            lista_numero=[]
-            lista_asunto=[]
-            lista_persona=[]
-            lista_fecha=[]
-            lista_medio=[]
-            lista_ncheque=[]
-            lista_monto=[]
-            lista_descripcion=[]
-            for dato in fila:
-                lista_numero.append(dato['numero'])
-                lista_asunto.append(dato['asunto'])
-                lista_persona.append(dato['persona'])
-                lista_fecha.append(dato['fecha'].strftime("%d-%m-%Y"))
-                lista_medio.append(dato['medio'])
-                if dato['nCheque']!=0:
-                    lista_ncheque.append(dato['nCheque'])
-                else: lista_ncheque.append(" ")
-                lista_monto.append(dato['monto'])
-                lista_descripcion.append(dato['descripcion'])
-            
-            if tipo=='Ingreso':
-                data = pd.DataFrame({'Numero':lista_numero, 'Asunto':lista_asunto, 'Recibido de':lista_persona, 'Fecha':lista_fecha, 'Medio':lista_medio, 'N° Cheque':lista_ncheque, 'Monto':lista_monto, 'Por concepto de':lista_descripcion})
-            else: 
-                data = pd.DataFrame({'Numero':lista_numero, 'Asunto':lista_asunto, 'Para':lista_persona, 'Fecha':lista_fecha, 'Medio':lista_medio, 'N° Cheque':lista_ncheque, 'Monto':lista_monto, 'Por concepto de':lista_descripcion})
-
-            filepath = findfile(tipo+"s_"+anio+"_PLANTILLA.xlsx", "\\")
-            if filepath==None:
-                #filepath = findfile(tipo+"s_"+anio+"_PLANTILLA.xlsx", "\\")
-                libro=xls.Workbook(tipo+"s_"+anio+"_PLANTILLA.xlsx")
-                libro.close()
-                with pd.ExcelWriter(tipo+"s_"+anio+"_PLANTILLA.xlsx") as writer:
-                    data.to_excel(writer, sheet_name=mes[5:])
+    # Filtrar Tabla
+    elif opcion==5:
+        tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
+        mycursor = conexion_bdd.cursor()
+        if busqueda_var.get()=='':
+            if filtroTipo_var.get()!='Todos':
+                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC") # Sentencia MYSQL: Se seleccionan los elementos del tipo seleccionado
+                if filtroTipo_var.get()=='Ingreso':
+                    tabla.heading('4', text="Recibido de", anchor=W)
+                else: tabla.heading('4', text="Enviado a", anchor=W)
             else:
-                rod = os.path.dirname(os.path.abspath(filepath))
-                wb = load_workbook(rod+"\\"+tipo+"s_"+anio+"_PLANTILLA.xlsx", read_only=True)
+                mycursor.execute("SELECT * FROM Transaccion ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
+                tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
+        else:
+            if filtroTipo_var.get()!='Todos':
+                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `asunto` = '"+busqueda_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
+                if filtroTipo_var.get()=='Ingreso':
+                    tabla.heading('4', text="Recibido de", anchor=W)
+                else: tabla.heading('4', text="Enviado a", anchor=W)
+            else:
+                mycursor.execute("SELECT * FROM Transaccion WHERE `asunto` LIKE '"+busqueda_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
+                tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
+        fila = mycursor.fetchall()
+        
+        # Se insertan en la tabla los datos seleccionados
+        for dato in fila:
+            if dato[6]!=0:
+                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
 
-                if not mes[5:] in wb.sheetnames:
-                    try:
-                        with pd.ExcelWriter(rod+"\\"+tipo+"s_"+anio+"_PLANTILLA.xlsx", mode="a", engine="openpyxl") as writer:
-                            data.to_excel(writer, sheet_name=mes[5:])
-                    except:
-                        messagebox.showerror(title="Error", message="Cierre el archivo excel "+tipo+"s_"+anio+"_PLANTILLA.xlsx antes de exportar el mes de "+mes[5:])
+    # Editar elemento
+    elif opcion==6:
+        sql = "UPDATE Transaccion SET `asunto` = %s, `persona` = %s, `fecha` = %s, `medio` = %s, `nCheque` = %s, `monto` = %s, `descripcion` = %s WHERE `numero` = %s AND `tipo` = %s"
+        valores = (asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion, numero, tipo)
+        
+        mycursor = conexion_bdd.cursor()
+        mycursor.execute(sql, valores)
+        conexion_bdd.commit()
 
-                wb.close()
 
-        mycursor.close()
-        conexion_bdd.close() # Se cierra la conexión a la base de datos remota
+        if medio=='Cheque':
+            tabla.item(elemento, values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
+        else: tabla.item(elemento, values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
+    
+    # Exportar datos a excel
+    else:
+        mycursor = conexion_bdd.cursor()
+        mycursor.execute("SELECT * FROM Transaccion WHERE MONTH(fecha) = "+mes[0:2]+" AND YEAR(fecha) = "+anio+" AND `tipo` = '"+tipo+"'")
+        fila = mycursor.fetchall()
 
-    except pymysql.Error as e:
-        if messagebox.showerror(title="Error", message=e):
-            print(e)
-            app.destroy()
+        lista_numero=[]
+        lista_asunto=[]
+        lista_persona=[]
+        lista_fecha=[]
+        lista_medio=[]
+        lista_ncheque=[]
+        lista_monto=[]
+        lista_descripcion=[]
+        for dato in fila:
+            lista_numero.append(dato[0])
+            lista_asunto.append(dato[2])
+            lista_persona.append(dato[3])
+            lista_fecha.append(dato[4].strftime("%d-%m-%Y"))
+            lista_medio.append(dato[5])
+            if dato[6]!=0:
+                lista_ncheque.append(dato[6])
+            else: lista_ncheque.append(" ")
+            lista_monto.append(dato[7])
+            lista_descripcion.append(dato[8])
+        
+        if tipo=='Ingreso':
+            data = pd.DataFrame({'Numero':lista_numero, 'Asunto':lista_asunto, 'Recibido de':lista_persona, 'Fecha':lista_fecha, 'Medio':lista_medio, 'N° Cheque':lista_ncheque, 'Monto':lista_monto, 'Por concepto de':lista_descripcion})
+        else: 
+            data = pd.DataFrame({'Numero':lista_numero, 'Asunto':lista_asunto, 'Para':lista_persona, 'Fecha':lista_fecha, 'Medio':lista_medio, 'N° Cheque':lista_ncheque, 'Monto':lista_monto, 'Por concepto de':lista_descripcion})
+
+        filepath = findfile(tipo+"s_"+anio+"_PLANTILLA.xlsx", "\\")
+        if filepath==None:
+            #filepath = findfile(tipo+"s_"+anio+"_PLANTILLA.xlsx", "\\")
+            libro=xls.Workbook(tipo+"s_"+anio+"_PLANTILLA.xlsx")
+            libro.close()
+            with pd.ExcelWriter(tipo+"s_"+anio+"_PLANTILLA.xlsx") as writer:
+                data.to_excel(writer, sheet_name=mes[5:])
+        else:
+            rod = os.path.dirname(os.path.abspath(filepath))
+            wb = load_workbook(rod+"\\"+tipo+"s_"+anio+"_PLANTILLA.xlsx", read_only=True)
+
+            if not mes[5:] in wb.sheetnames:
+                try:
+                    with pd.ExcelWriter(rod+"\\"+tipo+"s_"+anio+"_PLANTILLA.xlsx", mode="a", engine="openpyxl") as writer:
+                        data.to_excel(writer, sheet_name=mes[5:])
+                except:
+                    messagebox.showerror(title="Error", message="Cierre el archivo excel "+tipo+"s_"+anio+"_PLANTILLA.xlsx antes de exportar el mes de "+mes[5:])
+
+            wb.close()
+
+    mycursor.close()
+    conexion_bdd.close() # Se cierra la conexión a la base de datos remota
+
+    
 
 
 #================== Funciones de inicialización componentes secciones agregar ingreso y agregar egreso ==================
@@ -1292,18 +1267,18 @@ app.option_add("*TCombobox*Listbox*Font", font.Font(family="Helvetica", size=13)
 
 
 # Frames: Contenedores dentro de la ventana que contienen los elementos
-contenedor_Buscador=LabelFrame(app, text="Buscador Asunto", font=('Helvetica', 12), bg='#8297BC', fg='#FFFFFF')
+contenedor_Buscador=LabelFrame(app, text="Buscador Asunto", font=('Helvetica', 13), bg='#8297BC', fg='#FFFFFF')
 contenedor_Buscador.place(x=10, y=10, width=640, height=75)
-contenedor_FiltroTipo=LabelFrame(app, text="Filtrar por tipo", font=('Helvetica', 12), bg='#C5A97B', fg='#FFFFFF')
+contenedor_FiltroTipo=LabelFrame(app, text="Filtrar por tipo", font=('Helvetica', 13), bg='#C5A97B', fg='#FFFFFF')
 contenedor_FiltroTipo.place(x=660, y=10, width=220, height=75)
 
-contenedor_operaciones=LabelFrame(app, text="Operaciones", font=('Helvetica', 12), bg='#E64611', fg='#FFFFFF')
+contenedor_operaciones=LabelFrame(app, text="Operaciones", font=('Helvetica', 13), bg='#E64611', fg='#FFFFFF')
 contenedor_operaciones.place(x=890, y=10, width=600, height=75)
 contenedor_Tabla=Frame(app, bg='#EDB712')
 contenedor_Tabla.place(x=10, y=90, width=870, height=600)
-contenedor_campos=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
-contenedor_editor=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
-contenedor_exportar=LabelFrame(app, font=('Helvetica', 12), bg='#FFFFFF', fg='#000000')
+contenedor_campos=LabelFrame(app, font=('Helvetica', 13), bg='#FFFFFF', fg='#000000')
+contenedor_editor=LabelFrame(app, font=('Helvetica', 13), bg='#FFFFFF', fg='#000000')
+contenedor_exportar=LabelFrame(app, font=('Helvetica', 13), bg='#FFFFFF', fg='#000000')
 
 
 # Tabla
