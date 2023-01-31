@@ -6,6 +6,7 @@ from datetime import *
 import pandas as pd
 import xlsxwriter as xls
 from openpyxl import load_workbook
+import time as tiempo
 
 # Librerías Interfaz Gráfica Tkinter
 from tkinter import *
@@ -16,9 +17,7 @@ from tkinter import font
 
 
 # Librería conexión base de datos por medio de mysql
-#import mysql.connector
-#import pymysql
-import MySQLdb
+import pymysql
 
 # Librerías edición docx
 from pathlib import Path
@@ -314,35 +313,9 @@ DB_USER_PASSWORD = 'pscale_pw_z8FWTgp8gcRZJUEmtlO1GTY2mep54VHI46hlq7lxyOm'
 DB_NAME = 'administracion-ingresos-egresos'
 
 
-#---------------------------- Conexión a la base de datos remota ----------------------
-def conectar_BaseDeDatos(opcion):
-    conexion_bdd = MySQLdb.connect(
-        user=DB_USER, # Usuario
-        password=DB_USER_PASSWORD, # Contraseña
-        host=DB_HOST, # Host
-        database=DB_NAME, # Nombre de la base de datos
-        ssl={"rejectUnauthorized":False}
-        )
-
-    # Obtener número de folio
-    if opcion==0:
-        mycursor=conexion_bdd.cursor()
-        mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE `numero` LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipoT)+"'") # Sentencia MYSQL: Se cuentan todos los ingresos o egresos de un mismo año
-        fila = mycursor.fetchall()
-        global numero
-        ne=int(fila[0][0])
-        if ne==0:
-            numero="000-"+str(fecha.year)
-        else:
-            if ne>=1 and ne<=9:
-                numero = "00"+str(fila[0][0])+"-"+str(fecha.year)
-            elif ne>=11 and ne<=99:
-                numero = "0"+str(fila[0][0])+"-"+str(fecha.year)
-            else:
-                numero = str(fila[0][0])+"-"+str(fecha.year)
-
-    # Importar la base de datos
-    elif opcion==1:
+def importar_datos_baseDeDatos():
+    try:
+        conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
         mycursor = conexion_bdd.cursor()
         query="SELECT * FROM Transaccion ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC"
         mycursor.execute(query) 
@@ -350,28 +323,68 @@ def conectar_BaseDeDatos(opcion):
 
 
         for dato in fila:
-            if dato[0]!=0:
-                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
-            else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            if dato['nCheque']!=0:
+                tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
+            else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
 
+        mycursor.close()
+        conexion_bdd.close()
+    
+    except pymysql.Error as error:
+        if messagebox.showerror(title="Error", message=error):
+            app.destroy()
 
-    # Agregar elemento a la base de datos
-    elif opcion==2:
+def obtener_numeroDeFolio_baseDeDatos():
+    try:
+        conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
+        mycursor=conexion_bdd.cursor()
+        mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE `numero` LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipoT)+"'") # Sentencia MYSQL: Se cuentan todos los ingresos o egresos de un mismo año
+        fila = mycursor.fetchall()
+        global numero
+        ne=int(fila[0]['count(*)'])
+        if ne==0:
+            numero="000-"+str(fecha.year)
+        else:
+            if ne>=1 and ne<=9:
+                numero = "00"+str(fila[0]['count(*)'])+"-"+str(fecha.year)
+            elif ne>=11 and ne<=99:
+                numero = "0"+str(fila[0]['count(*)'])+"-"+str(fecha.year)
+            else:
+                numero = str(fila[0]['count(*)'])+"-"+str(fecha.year)
+
+        mycursor.close()
+        conexion_bdd.close()
+
+    except pymysql.Error as error:
+        if messagebox.showerror(title="Error", message=error):
+            numero='000-0000'
+            cerrar_seccion_agregar()
+
+def insertar_dato_baseDeDatos():
+    try:
+        conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
         sql = "INSERT INTO Transaccion (numero, tipo, asunto, persona, fecha, medio, nCheque, monto, descripcion) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)" # Sentenica MYSQL: Se inserta la fila nueva con sus datos
         valores = (numero, tipo, asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion)
-
 
         mycursor = conexion_bdd.cursor()
         mycursor.execute(sql, valores)
         conexion_bdd.commit()
+
+        mycursor.close()
+        conexion_bdd.close()
 
         # El elemento nuevo se inserta en la tabla para mantener ésta actualizada
         if ncheque!=0:
             tabla.insert('', 'end', values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
         else: tabla.insert('', 'end', values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
 
-    # Buscar en la base de datos por asunto
-    elif opcion==3:
+    except pymysql.Error as error:
+        if messagebox.showerror(title="Error", message=error):
+            cerrar_seccion_agregar()
+
+def buscar_asunto_baseDeDatos():
+    try:
+        conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
         # Se hace la busqueda sí se ingreso una cadena de largo mayor a 2 carácteres 
         if len(busqueda_var.get())>2:
             tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
@@ -397,12 +410,20 @@ def conectar_BaseDeDatos(opcion):
             fila = mycursor.fetchall()
             # Se insertan en la tabla los datos de la búsqueda
             for dato in fila:
-                if dato[6]!=0:
-                    tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
-                else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
-    
-    # Limpiar busqueda de la base de datos
-    elif opcion==4:
+                if dato['nCheque']!=0:
+                    tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
+                else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
+
+        mycursor.close()
+        conexion_bdd.close()
+
+    except pymysql.Error as error:
+        messagebox.showerror(title="Error", message=error)
+
+
+def limpiar_busqueda_baseDeDatos():
+    try:
+        conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
         tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
         tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         mycursor = conexion_bdd.cursor()
@@ -412,13 +433,20 @@ def conectar_BaseDeDatos(opcion):
 
         # Se insertan en la tabla todos los elementos de la base de datos
         for dato in fila:
-            if dato[6]!=0:
-                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
-            else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            if dato['nCheque']!=0:
+                tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
+            else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
+
+        mycursor.close()
+        conexion_bdd.close()
+    
+    except pymysql.Error as error:
+        messagebox.showerror(title="Error", message=error)
 
 
-    # Filtrar Tabla
-    elif opcion==5:
+def filtrar_tipo_baseDeDatos():
+    try:
+        conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
         tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
         mycursor = conexion_bdd.cursor()
         if busqueda_var.get()=='':
@@ -443,26 +471,43 @@ def conectar_BaseDeDatos(opcion):
         
         # Se insertan en la tabla los datos seleccionados
         for dato in fila:
-            if dato[6]!=0:
-                tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], dato[6], '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
-            else: tabla.insert('', 'end', values=(dato[0], dato[1], dato[2], dato[3], dato[4].strftime("%d-%m-%Y"), dato[5], "--------", '{:,}'.format(dato[7]).replace(',','.'), dato[8]))
+            if dato['nCheque']!=0:
+                tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
+            else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
 
-    # Editar elemento
-    elif opcion==6:
+        mycursor.close()
+        conexion_bdd.close()
+
+    except pymysql.Error as error:
+        messagebox.showerror(title="Error", message=error)
+
+
+def actualizar_dato_baseDeDatos():
+    try:
+        conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
         sql = "UPDATE Transaccion SET `asunto` = %s, `persona` = %s, `fecha` = %s, `medio` = %s, `nCheque` = %s, `monto` = %s, `descripcion` = %s WHERE `numero` = %s AND `tipo` = %s"
         valores = (asunto, persona, date.isoformat(fecha), medio, ncheque, monto, descripcion, numero, tipo)
-        
+
         mycursor = conexion_bdd.cursor()
         mycursor.execute(sql, valores)
         conexion_bdd.commit()
+
+        mycursor.close()
+        conexion_bdd.close()
 
 
         if medio=='Cheque':
             tabla.item(elemento, values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, ncheque, '{:,}'.format(monto).replace(',','.'), descripcion))
         else: tabla.item(elemento, values=(numero, tipo, asunto, persona, fecha.strftime("%d-%m-%Y"), medio, "--------", '{:,}'.format(monto).replace(',','.'), descripcion))
-    
-    # Exportar datos a excel
-    else:
+
+    except pymysql.Error as error:
+        if messagebox.showerror(title="Error", message=error):
+            cerrar_seccion_editar()
+
+
+def exportar_datos_baseDeDatos():
+    try:
+        conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
         mycursor = conexion_bdd.cursor()
         mycursor.execute("SELECT * FROM Transaccion WHERE MONTH(fecha) = "+mes[0:2]+" AND YEAR(fecha) = "+anio+" AND `tipo` = '"+tipo+"'")
         fila = mycursor.fetchall()
@@ -476,16 +521,19 @@ def conectar_BaseDeDatos(opcion):
         lista_monto=[]
         lista_descripcion=[]
         for dato in fila:
-            lista_numero.append(dato[0])
-            lista_asunto.append(dato[2])
-            lista_persona.append(dato[3])
-            lista_fecha.append(dato[4].strftime("%d-%m-%Y"))
-            lista_medio.append(dato[5])
-            if dato[6]!=0:
-                lista_ncheque.append(dato[6])
+            lista_numero.append(dato['numero'])
+            lista_asunto.append(dato['asunto'])
+            lista_persona.append(dato['persona'])
+            lista_fecha.append(dato['fecha'].strftime("%d-%m-%Y"))
+            lista_medio.append(dato['medio'])
+            if dato['nCheque']!=0:
+                lista_ncheque.append(dato['nCheque'])
             else: lista_ncheque.append(" ")
-            lista_monto.append(dato[7])
-            lista_descripcion.append(dato[8])
+            lista_monto.append(dato['monto'])
+            lista_descripcion.append(dato['descripcion'])
+
+        mycursor.close()
+        conexion_bdd.close()
         
         if tipo=='Ingreso':
             data = pd.DataFrame({'Numero':lista_numero, 'Asunto':lista_asunto, 'Recibido de':lista_persona, 'Fecha':lista_fecha, 'Medio':lista_medio, 'N° Cheque':lista_ncheque, 'Monto':lista_monto, 'Por concepto de':lista_descripcion})
@@ -512,10 +560,9 @@ def conectar_BaseDeDatos(opcion):
 
             wb.close()
 
-    mycursor.close()
-    conexion_bdd.close() # Se cierra la conexión a la base de datos remota
-
-    
+    except pymysql.Error as error:
+        if messagebox.showerror(title="Error", message=error):
+            cerrar_seccion_exportar()
 
 
 #================== Funciones de inicialización componentes secciones agregar ingreso y agregar egreso ==================
@@ -633,7 +680,7 @@ def inicializar_componentes(tipo):
         global tipoT
         fecha=entrada3.get_date()
         tipoT=tipo
-        conectar_BaseDeDatos(0)
+        obtener_numeroDeFolio_baseDeDatos()
         numero_var.set(numero)
     def dateentryclick(evento):
         obtener_numero()
@@ -773,7 +820,7 @@ def crearTransaccion(t):
     descripcion=entrada6.get("1.0", "end-1c")
     tipo=t
     
-    conectar_BaseDeDatos(2) # Conexión a la base de datos (agregar elemento)
+    insertar_dato_baseDeDatos() # Conexión a la base de datos (agregar elemento)
     crear_documento()
     if imprimir.get()==True:
         imprimir_documento()
@@ -999,7 +1046,7 @@ def guardar_cambios_edicion():
     numero=tabla.item(elemento)['values'][0]
 
     
-    conectar_BaseDeDatos(6) # Conexión a la base de datos (editar elemento)
+    actualizar_dato_baseDeDatos() # Conexión a la base de datos (editar elemento)
     crear_documento()
     if imprimir.get()==True:
         imprimir_documento()
@@ -1078,10 +1125,13 @@ def imprimir_documento():
     level = 2
     attributes = win32print.GetPrinter(handle, level)
     attributes['pDevMode'].Duplex = 3 
-    win32print.SetPrinter(handle, level, attributes, 0)
-    win32print.GetPrinter(handle, level)['pDevMode'].Duplex
-    win32api.ShellExecute(0, "print", rod+"\\"+str(numero)+"_"+tipo+".docx", None,  ".",  0)
-    win32print.ClosePrinter(handle)
+    try:
+        win32print.SetPrinter(handle, level, attributes, 0)
+        win32print.GetPrinter(handle, level)['pDevMode'].Duplex
+        win32api.ShellExecute(0, "print", rod+"\\"+str(numero)+"_"+tipo+".docx", None,  ".",  0)
+        win32print.ClosePrinter(handle)
+    except win32api.error() as error:
+        messagebox.showerror(title="Error win32api", message=error)
 
 def inicializar_variables_exportar():
     global tipo_var
@@ -1143,7 +1193,7 @@ def exportar_datos():
     tipo=tipo_var.get()
     mes=mes_var.get()
     anio=a_var.get()
-    conectar_BaseDeDatos(7)
+    exportar_datos_baseDeDatos()
     cerrar_seccion_exportar()
 
 def cerrar_ventanaPrincipal():
@@ -1203,7 +1253,7 @@ def imprimir_transaccion():
     fecha=datetime.strptime(tabla.item(elemento)['values'][4], '%d-%m-%Y')
     medio=tabla.item(elemento)['values'][5]
     ncheque=tabla.item(elemento)['values'][6]
-    monto=int(tabla.item(elemento)['values'][7].replace(".",""))
+    monto=int(str(tabla.item(elemento)['values'][7]).replace(".",""))
     descripcion=tabla.item(elemento)['values'][8]
     filepath=findfile(numero+"_"+tipo+".docx", "\\")
     if filepath==None:
@@ -1227,22 +1277,22 @@ def exportar_a_excel():
 
 
 
-def buscar_persona():
+def buscar_asunto():
     contenedor_operaciones.place_forget()
-    conectar_BaseDeDatos(3)
+    buscar_asunto_baseDeDatos()
 
 def limpiar_tabla():
     entradaBuscar.delete(0, 'end')
     filtroTipo_var.set('Todos')
     contenedor_operaciones.place(x=890, y=10, width=600, height=75)
-    conectar_BaseDeDatos(4)
+    limpiar_busqueda_baseDeDatos()
 
 def filtrar_tabla(evento):
     if filtroTipo_var.get()=='Todos' and busqueda_var.get()=='':
         contenedor_operaciones.place(x=890, y=10, width=600, height=75)
     else:
         contenedor_operaciones.place_forget()
-    conectar_BaseDeDatos(5)
+    filtrar_tipo_baseDeDatos()
 
 def anular_elemento():
     pass
@@ -1363,7 +1413,7 @@ combo_tipo.bind('<<ComboboxSelected>>', filtrar_tabla)
 
 
 # Botones
-botonBuscar=Button(contenedor_Buscador, text="Buscar", command=buscar_persona, font=("Helvetica", 12), bg='#FFFFFF')
+botonBuscar=Button(contenedor_Buscador, text="Buscar", command=buscar_asunto, font=("Helvetica", 12), bg='#FFFFFF')
 botonBuscar.place(x=475, y=10)
 botonBuscar['state']=DISABLED
 botonLimpiar=Button(contenedor_Buscador, text="Limpiar", command=limpiar_tabla, font=("Helvetica", 12), bg='#FFFFFF')
@@ -1381,6 +1431,6 @@ botonExportarExcel=Button(contenedor_operaciones, text="Exportar a Excel", comma
 botonExportarExcel.place(x=340, y=10)
 
 # Conexión con la base de datos (importación de datos)
-conectar_BaseDeDatos(1)
+importar_datos_baseDeDatos()
 app.mainloop()
     
