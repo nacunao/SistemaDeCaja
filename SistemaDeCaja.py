@@ -3,10 +3,12 @@
 import sys
 import os
 from datetime import *
+import time as tiempo
+
+# Librerías para exportar a excel
 import pandas as pd
 import xlsxwriter as xls
 from openpyxl import load_workbook
-import time as tiempo
 
 # Librerías Interfaz Gráfica Tkinter
 from tkinter import *
@@ -27,6 +29,7 @@ from docxtpl import DocxTemplate
 # Librerías impresión
 from win32 import win32print
 from win32 import win32api
+
 
 fecha_anterior=datetime.now().date().strftime('%d-%m-%Y')
 
@@ -320,19 +323,18 @@ def importar_datos_baseDeDatos():
         query="SELECT * FROM Transaccion ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC"
         mycursor.execute(query) 
         fila = mycursor.fetchall()
-
+        mycursor.close()
+        conexion_bdd.close()
 
         for dato in fila:
             if dato['nCheque']!=0:
                 tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
             else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-
-        mycursor.close()
-        conexion_bdd.close()
     
     except pymysql.Error as error:
         if messagebox.showerror(title="Error", message=error):
             app.destroy()
+
 
 def obtener_numeroDeFolio_baseDeDatos():
     try:
@@ -340,6 +342,9 @@ def obtener_numeroDeFolio_baseDeDatos():
         mycursor=conexion_bdd.cursor()
         mycursor.execute("SELECT COUNT(*) FROM Transaccion WHERE `numero` LIKE '%"+str(fecha.year)+"' AND `tipo` LIKE '"+str(tipoT)+"'") # Sentencia MYSQL: Se cuentan todos los ingresos o egresos de un mismo año
         fila = mycursor.fetchall()
+        mycursor.close()
+        conexion_bdd.close()
+
         global numero
         ne=int(fila[0]['count(*)'])
         if ne==0:
@@ -352,13 +357,11 @@ def obtener_numeroDeFolio_baseDeDatos():
             else:
                 numero = str(fila[0]['count(*)'])+"-"+str(fecha.year)
 
-        mycursor.close()
-        conexion_bdd.close()
-
     except pymysql.Error as error:
         if messagebox.showerror(title="Error", message=error):
             numero='000-0000'
             cerrar_seccion_agregar()
+
 
 def insertar_dato_baseDeDatos():
     try:
@@ -382,6 +385,7 @@ def insertar_dato_baseDeDatos():
         if messagebox.showerror(title="Error", message=error):
             cerrar_seccion_agregar()
 
+
 def buscar_asunto_baseDeDatos():
     try:
         conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
@@ -400,21 +404,21 @@ def buscar_asunto_baseDeDatos():
                     tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
             else:
                 if filtroTipo_var.get()!='Todos':
-                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `asunto` = '"+busqueda_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
+                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
                     if filtroTipo_var.get()=='Ingreso':
                         tabla.heading('4', text="Recibido de", anchor=W)
                     else: tabla.heading('4', text="Enviado a", anchor=W)
                 else:
-                    mycursor.execute("SELECT * FROM Transaccion WHERE `asunto` LIKE '"+busqueda_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
+                    mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
                     tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
             fila = mycursor.fetchall()
+            mycursor.close()
             # Se insertan en la tabla los datos de la búsqueda
             for dato in fila:
                 if dato['nCheque']!=0:
                     tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
                 else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
 
-        mycursor.close()
         conexion_bdd.close()
 
     except pymysql.Error as error:
@@ -430,6 +434,8 @@ def limpiar_busqueda_baseDeDatos():
         query="SELECT * FROM Transaccion ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC"
         mycursor.execute(query) 
         fila = mycursor.fetchall()
+        mycursor.close()
+        conexion_bdd.close()
 
         # Se insertan en la tabla todos los elementos de la base de datos
         for dato in fila:
@@ -437,9 +443,6 @@ def limpiar_busqueda_baseDeDatos():
                 tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
             else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
 
-        mycursor.close()
-        conexion_bdd.close()
-    
     except pymysql.Error as error:
         messagebox.showerror(title="Error", message=error)
 
@@ -460,14 +463,16 @@ def filtrar_tipo_baseDeDatos():
                 tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         else:
             if filtroTipo_var.get()!='Todos':
-                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND `asunto` = '"+busqueda_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
+                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
                 if filtroTipo_var.get()=='Ingreso':
                     tabla.heading('4', text="Recibido de", anchor=W)
                 else: tabla.heading('4', text="Enviado a", anchor=W)
             else:
-                mycursor.execute("SELECT * FROM Transaccion WHERE `asunto` LIKE '"+busqueda_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
+                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
                 tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         fila = mycursor.fetchall()
+        mycursor.close()
+        conexion_bdd.close()
         
         # Se insertan en la tabla los datos seleccionados
         for dato in fila:
@@ -475,8 +480,6 @@ def filtrar_tipo_baseDeDatos():
                 tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
             else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
 
-        mycursor.close()
-        conexion_bdd.close()
 
     except pymysql.Error as error:
         messagebox.showerror(title="Error", message=error)
@@ -511,6 +514,8 @@ def exportar_datos_baseDeDatos():
         mycursor = conexion_bdd.cursor()
         mycursor.execute("SELECT * FROM Transaccion WHERE MONTH(fecha) = "+mes[0:2]+" AND YEAR(fecha) = "+anio+" AND `tipo` = '"+tipo+"'")
         fila = mycursor.fetchall()
+        mycursor.close()
+        conexion_bdd.close()
 
         lista_numero=[]
         lista_asunto=[]
@@ -531,9 +536,6 @@ def exportar_datos_baseDeDatos():
             else: lista_ncheque.append(" ")
             lista_monto.append(dato['monto'])
             lista_descripcion.append(dato['descripcion'])
-
-        mycursor.close()
-        conexion_bdd.close()
         
         if tipo=='Ingreso':
             data = pd.DataFrame({'Numero':lista_numero, 'Asunto':lista_asunto, 'Recibido de':lista_persona, 'Fecha':lista_fecha, 'Medio':lista_medio, 'N° Cheque':lista_ncheque, 'Monto':lista_monto, 'Por concepto de':lista_descripcion})
@@ -542,7 +544,6 @@ def exportar_datos_baseDeDatos():
 
         filepath = findfile(tipo+"s_"+anio+"_PLANTILLA.xlsx", "\\")
         if filepath==None:
-            #filepath = findfile(tipo+"s_"+anio+"_PLANTILLA.xlsx", "\\")
             libro=xls.Workbook(tipo+"s_"+anio+"_PLANTILLA.xlsx")
             libro.close()
             with pd.ExcelWriter(tipo+"s_"+anio+"_PLANTILLA.xlsx") as writer:
@@ -1061,11 +1062,12 @@ def findfile(name, path):
 # Función que crea el documento con los datos el elemento nuevo a partir de una plantilla
 def crear_documento():
     if tipo=='Ingreso':
-        filepath = findfile("plantilla_documento_ingreso.docx", "\\")
-        plantilla_documento = Path(filepath).parent / "plantilla_documento_ingreso.docx"
+        #filepath = findfile("plantilla_documento_ingreso.docx", "\\")
+        plantilla_documento = "plantilla_documento_ingreso.docx"
     else:
-        filepath = findfile("plantilla_documento_egreso.docx", "\\")
-        plantilla_documento = Path(filepath).parent / "plantilla_documento_egreso.docx"
+        #filepath = findfile("plantilla_documento_egreso.docx", "\\")
+        plantilla_documento = "plantilla_documento_egreso.docx"
+    
     documento = DocxTemplate(plantilla_documento)
 
     f=Formato()
@@ -1113,9 +1115,8 @@ def crear_documento():
         }
 
     documento.render(context)
-    documento.save(Path(filepath).parent / f"{numero}_{tipo}.docx")
-    global rod
-    rod =os.path.dirname(os.path.abspath(filepath))
+    documento.save(f"{numero}_{tipo}.docx")
+
 
 # Función que Imprime el documento en la impresora predeterminada
 def imprimir_documento():
@@ -1125,13 +1126,10 @@ def imprimir_documento():
     level = 2
     attributes = win32print.GetPrinter(handle, level)
     attributes['pDevMode'].Duplex = 3 
-    try:
-        win32print.SetPrinter(handle, level, attributes, 0)
-        win32print.GetPrinter(handle, level)['pDevMode'].Duplex
-        win32api.ShellExecute(0, "print", rod+"\\"+str(numero)+"_"+tipo+".docx", None,  ".",  0)
-        win32print.ClosePrinter(handle)
-    except win32api.error() as error:
-        messagebox.showerror(title="Error win32api", message=error)
+    win32print.SetPrinter(handle, level, attributes, 0)
+    win32print.GetPrinter(handle, level)['pDevMode'].Duplex
+    win32api.ShellExecute(0, "print", str(numero)+"_"+tipo+".docx", None,  ".",  0)
+    win32print.ClosePrinter(handle)
 
 def inicializar_variables_exportar():
     global tipo_var
@@ -1258,10 +1256,7 @@ def imprimir_transaccion():
     filepath=findfile(numero+"_"+tipo+".docx", "\\")
     if filepath==None:
         crear_documento()
-    else:
-        global rod
-        rod =os.path.dirname(os.path.abspath(filepath))
-        imprimir_documento()
+    imprimir_documento()
     tabla.selection_remove(tabla.selection())
 
 def exportar_a_excel():
@@ -1278,16 +1273,19 @@ def exportar_a_excel():
 
 
 def buscar_asunto():
+    busqueda_var.set(busqueda_var.get().upper())
     contenedor_operaciones.place_forget()
     buscar_asunto_baseDeDatos()
 
 def limpiar_tabla():
-    entradaBuscar.delete(0, 'end')
+    botonBuscar['state']=DISABLED
+    busqueda_var.set('')
     filtroTipo_var.set('Todos')
     contenedor_operaciones.place(x=890, y=10, width=600, height=75)
     limpiar_busqueda_baseDeDatos()
 
 def filtrar_tabla(evento):
+    busqueda_var.set(busqueda_var.get().upper())
     if filtroTipo_var.get()=='Todos' and busqueda_var.get()=='':
         contenedor_operaciones.place(x=890, y=10, width=600, height=75)
     else:
@@ -1298,9 +1296,7 @@ def anular_elemento():
     pass
 
 
-
 #====================================VENTANA PRINCIPAL=========================================
-
 app=Tk()
 app.title("Sistema de Caja")
 width = 1500 # ancho de la ventana
@@ -1374,6 +1370,9 @@ tabla.column('9', stretch=NO, minwidth=800, width=800)
 
 def deseleccionar_elemento(evento):
     tabla.selection_remove(tabla.selection())
+    entradaBuscar['state']=NORMAL
+    botonLimpiar['state']=NORMAL
+    combo_tipo['state']='readonly'
     botonAgregarIngreso.place(x=20, y=10)
     botonAgregarEgreso.place(x=180, y=10)
     botonExportarExcel.place(x=340, y=10)
@@ -1382,6 +1381,9 @@ def deseleccionar_elemento(evento):
 tabla.bind("<ButtonRelease-3>", deseleccionar_elemento)
 
 def mostrar_boton_editar(evento):
+    entradaBuscar['state']=DISABLED
+    botonLimpiar['state']=DISABLED
+    combo_tipo['state']=DISABLED
     botonAgregarIngreso.place_forget()
     botonAgregarEgreso.place_forget()
     botonExportarExcel.place_forget()
