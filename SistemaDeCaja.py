@@ -37,15 +37,6 @@ fecha_anterior=datetime.now().date().strftime('%d-%m-%Y')
 # LISTAS ASUNTO
 lista_asunto_ingreso=[
     'ARRIENDO',
-    'ARRIENDO CONFITERÍA EL FORTÍN',
-    'ARRIENDO CONFITERÍA ACHAVAR',
-    'ARRIENDO LIN DÍAZ',
-    'ARRIENDO LIN DÍAZ SEGUNDO PISO',
-    'ARRIENDO LA VERTIENTE (S BERNAL)',
-    'ARRIENDO KOPPA (E BERNAL)',
-    'ARRIENDO CLAUDIA (E BERNAL)',
-    'ARRIENDO CAFETERIA (BRAULIO)',
-    'ARRIENDO SCOUT',
     'ARRIENDO EVENTO',
     'ARRIENDO FIN DE SEMANA',
     'PASE JUGADOR',
@@ -85,6 +76,15 @@ lista_asunto_egreso=[
 
 # LISTAS RECIBIDO DE/ENVIADO A
 lista_recibido_de=[
+    'CONFITERÍA EL FORTÍN',
+    'CONFITERÍA ACHAVAR',
+    'LIN DÍAZ',
+    'LIN DÍAZ SEGUNDO PISO',
+    'LA VERTIENTE (S BERNAL)',
+    'KOPPA (E BERNAL)',
+    'CLAUDIA (E BERNAL)',
+    'CAFETERIA (BRAULIO)',
+    'SCOUT',
     'LIN DIAZ',
     'SAMUEL BERNAL',
     'ERIKA BERNAL',
@@ -386,45 +386,6 @@ def insertar_dato_baseDeDatos():
             cerrar_seccion_agregar()
 
 
-def buscar_asunto_baseDeDatos():
-    try:
-        conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
-        # Se hace la busqueda sí se ingreso una cadena de largo mayor a 2 carácteres 
-        if len(busqueda_var.get())>2:
-            tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
-            mycursor = conexion_bdd.cursor()
-            if busqueda_var.get()=='':
-                if filtroTipo_var.get()!='Todos':
-                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC") # Sentencia MYSQL: Se seleccionan los elementos del tipo seleccionado
-                    if filtroTipo_var.get()=='Ingreso':
-                        tabla.heading('4', text="Recibido de", anchor=W)
-                    else: tabla.heading('4', text="Enviado a", anchor=W)
-                else:
-                    mycursor.execute("SELECT * FROM Transaccion ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
-                    tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
-            else:
-                if filtroTipo_var.get()!='Todos':
-                    mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
-                    if filtroTipo_var.get()=='Ingreso':
-                        tabla.heading('4', text="Recibido de", anchor=W)
-                    else: tabla.heading('4', text="Enviado a", anchor=W)
-                else:
-                    mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
-                    tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
-            fila = mycursor.fetchall()
-            mycursor.close()
-            # Se insertan en la tabla los datos de la búsqueda
-            for dato in fila:
-                if dato['nCheque']!=0:
-                    tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-                else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
-
-        conexion_bdd.close()
-
-    except pymysql.Error as error:
-        messagebox.showerror(title="Error", message=error)
-
-
 def limpiar_busqueda_baseDeDatos():
     try:
         conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
@@ -447,14 +408,26 @@ def limpiar_busqueda_baseDeDatos():
         messagebox.showerror(title="Error", message=error)
 
 
-def filtrar_tipo_baseDeDatos():
+def buscar_filtrar_baseDeDatos():
     try:
         conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
         tabla.delete(*tabla.get_children()) # Se elimina el contenido de la tabla actual
         mycursor = conexion_bdd.cursor()
         if busqueda_var.get()=='':
-            if filtroTipo_var.get()!='Todos':
-                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` LIKE '"+filtroTipo_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC") # Sentencia MYSQL: Se seleccionan los elementos del tipo seleccionado
+            if filtroTipo_var.get()!='Todos' and filtroA_var.get()!='Todos':
+                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND YEAR(fecha) = '"+filtroA_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
+                if filtroTipo_var.get()=='Ingreso':
+                    tabla.heading('4', text="Recibido de", anchor=W)
+                else: tabla.heading('4', text="Enviado a", anchor=W)
+
+            elif filtroTipo_var.get()!='Todos' and filtroA_var.get()=='Todos':
+                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
+                if filtroTipo_var.get()=='Ingreso':
+                    tabla.heading('4', text="Recibido de", anchor=W)
+                else: tabla.heading('4', text="Enviado a", anchor=W)
+            
+            elif filtroTipo_var.get()=='Todos' and filtroA_var.get()!='Todos':
+                mycursor.execute("SELECT * FROM Transaccion WHERE YEAR(fecha) = '"+filtroA_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
                 if filtroTipo_var.get()=='Ingreso':
                     tabla.heading('4', text="Recibido de", anchor=W)
                 else: tabla.heading('4', text="Enviado a", anchor=W)
@@ -462,8 +435,20 @@ def filtrar_tipo_baseDeDatos():
                 mycursor.execute("SELECT * FROM Transaccion ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
                 tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
         else:
-            if filtroTipo_var.get()!='Todos':
-                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
+            if filtroTipo_var.get()!='Todos' and filtroA_var.get()!='Todos':
+                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 AND `tipo` = '"+filtroTipo_var.get()+"' AND YEAR(fecha) = '"+filtroA_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
+                if filtroTipo_var.get()=='Ingreso':
+                    tabla.heading('4', text="Recibido de", anchor=W)
+                else: tabla.heading('4', text="Enviado a", anchor=W)
+
+            elif filtroTipo_var.get()!='Todos' and filtroA_var.get()=='Todos':
+                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 AND `tipo` = '"+filtroTipo_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
+                if filtroTipo_var.get()=='Ingreso':
+                    tabla.heading('4', text="Recibido de", anchor=W)
+                else: tabla.heading('4', text="Enviado a", anchor=W)
+            
+            elif filtroTipo_var.get()=='Todos' and filtroA_var.get()!='Todos':
+                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 AND YEAR(fecha) = '"+filtroA_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
                 if filtroTipo_var.get()=='Ingreso':
                     tabla.heading('4', text="Recibido de", anchor=W)
                 else: tabla.heading('4', text="Enviado a", anchor=W)
@@ -1275,22 +1260,23 @@ def exportar_a_excel():
 def buscar_asunto():
     busqueda_var.set(busqueda_var.get().upper())
     contenedor_operaciones.place_forget()
-    buscar_asunto_baseDeDatos()
+    buscar_filtrar_baseDeDatos()
 
 def limpiar_tabla():
     botonBuscar['state']=DISABLED
     busqueda_var.set('')
     filtroTipo_var.set('Todos')
+    filtroA_var.set('Todos')
     contenedor_operaciones.place(x=890, y=10, width=600, height=75)
     limpiar_busqueda_baseDeDatos()
 
 def filtrar_tabla(evento):
     busqueda_var.set(busqueda_var.get().upper())
-    if filtroTipo_var.get()=='Todos' and busqueda_var.get()=='':
+    if filtroTipo_var.get()=='Todos' and filtroTipo_var.get()=='Todos' and busqueda_var.get()=='':
         contenedor_operaciones.place(x=890, y=10, width=600, height=75)
     else:
         contenedor_operaciones.place_forget()
-    filtrar_tipo_baseDeDatos()
+    buscar_filtrar_baseDeDatos()
 
 def anular_elemento():
     pass
@@ -1314,9 +1300,9 @@ app.option_add("*TCombobox*Listbox*Font", font.Font(family="Helvetica", size=13)
 
 # Frames: Contenedores dentro de la ventana que contienen los elementos
 contenedor_Buscador=LabelFrame(app, text="Buscador Asunto", font=('Helvetica', 13), bg='#8297BC', fg='#FFFFFF')
-contenedor_Buscador.place(x=10, y=10, width=640, height=75)
-contenedor_FiltroTipo=LabelFrame(app, text="Filtrar por tipo", font=('Helvetica', 13), bg='#C5A97B', fg='#FFFFFF')
-contenedor_FiltroTipo.place(x=660, y=10, width=220, height=75)
+contenedor_Buscador.place(x=10, y=10, width=420, height=75)
+contenedor_filtros=LabelFrame(app, text="Filtros Tipo y Año", font=('Helvetica', 13), bg='#C5A97B', fg='#FFFFFF')
+contenedor_filtros.place(x=440, y=10, width=440, height=75)
 
 contenedor_operaciones=LabelFrame(app, text="Operaciones", font=('Helvetica', 13), bg='#E64611', fg='#FFFFFF')
 contenedor_operaciones.place(x=890, y=10, width=600, height=75)
@@ -1401,25 +1387,33 @@ def habilitar_boton(evento):
 # Entradas
 global entradaBuscar
 entradaBuscar=Entry(contenedor_Buscador, textvariable=busqueda_var)
-entradaBuscar.place(x=20, y=10, width=425, height=32)
+entradaBuscar.place(x=20, y=10, width=205, height=32)
 app.bind('<KeyRelease>', habilitar_boton)
 
 
 global filtroTipo_var
+global filtroA_var
 filtroTipo_var=StringVar(value='Todos')
+filtroA_var=StringVar(value='Todos')
 
 # Combobox
-combo_tipo=ttk.Combobox(contenedor_FiltroTipo, values=['Todos', 'Ingreso', 'Egreso'], textvariable=filtroTipo_var, font=("Helvetica", 12), state='readonly')
+combo_tipo=ttk.Combobox(contenedor_filtros, values=['Todos', 'Ingreso', 'Egreso'], textvariable=filtroTipo_var, font=("Helvetica", 12), state='readonly')
 combo_tipo.place(x=10, y=10, width=200)
 combo_tipo.bind('<<ComboboxSelected>>', filtrar_tabla)
+
+lista_aFiltro=lista_a.copy()
+lista_aFiltro.insert(1, 'Todos')
+combo_anio=ttk.Combobox(contenedor_filtros, values=lista_aFiltro, textvariable=filtroA_var, font=("Helvetica", 12), state='readonly')
+combo_anio.place(x=230, y=10, width=200)
+combo_anio.bind('<<ComboboxSelected>>', filtrar_tabla)
 
 
 # Botones
 botonBuscar=Button(contenedor_Buscador, text="Buscar", command=buscar_asunto, font=("Helvetica", 12), bg='#FFFFFF')
-botonBuscar.place(x=475, y=10)
+botonBuscar.place(x=255, y=10)
 botonBuscar['state']=DISABLED
 botonLimpiar=Button(contenedor_Buscador, text="Limpiar", command=limpiar_tabla, font=("Helvetica", 12), bg='#FFFFFF')
-botonLimpiar.place(x=550, y=10)
+botonLimpiar.place(x=330, y=10)
 
 
 
