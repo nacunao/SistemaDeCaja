@@ -121,7 +121,7 @@ lista_enviado_a=[
     'OTRO'
 ]
 
-
+# lista de meses
 lista_meses=[
     '01 - ENERO',
     '02 - FEBRERO',
@@ -135,6 +135,8 @@ lista_meses=[
     '10 - OCTUBRE',
     '11 - NOVIEMBRE',
     '12 - DICIEMBRE']
+
+# lista de años
 lista_a=[]
 for a in range(2015,2031):
     lista_a.append(str(a))
@@ -317,7 +319,7 @@ DB_USER = 'hpn9tpk1dry0lmzu7377'
 DB_USER_PASSWORD = 'pscale_pw_z8FWTgp8gcRZJUEmtlO1GTY2mep54VHI46hlq7lxyOm' 
 DB_NAME = 'administracion-ingresos-egresos'
 
-
+# Importación inicial de los datos de la base de datos
 def importar_datos_baseDeDatos():
     try:
         conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
@@ -328,6 +330,7 @@ def importar_datos_baseDeDatos():
         mycursor.close()
         conexion_bdd.close()
 
+        # Insercción de los datos en la tabla
         for dato in fila:
             if dato['nCheque']!=0:
                 tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
@@ -338,6 +341,7 @@ def importar_datos_baseDeDatos():
             app.destroy()
 
 
+# Obtención del número de folio para la funcionalidades de agregar ingreso y agregar egreso
 def obtener_numeroDeFolio_baseDeDatos():
     try:
         conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
@@ -361,7 +365,7 @@ def obtener_numeroDeFolio_baseDeDatos():
             numero='000-0000'
             cerrar_seccion_agregar()
 
-
+# Insercción de dato nuevo en la base de datos
 def insertar_dato_baseDeDatos():
     try:
         conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
@@ -384,7 +388,7 @@ def insertar_dato_baseDeDatos():
         if messagebox.showerror(title="Error", message=error):
             cerrar_seccion_agregar()
 
-
+# Limpieza (refresh) de la tabla
 def limpiar_busqueda_baseDeDatos():
     try:
         conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
@@ -407,6 +411,7 @@ def limpiar_busqueda_baseDeDatos():
         messagebox.showerror(title="Error", message=error)
 
 
+# Búsqueda de datos por asunto/Filtro por tipo, año y rango de números de folio
 def buscar_filtrar_baseDeDatos():
     try:
         conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
@@ -457,6 +462,7 @@ def buscar_filtrar_baseDeDatos():
         messagebox.showerror(title="Error", message=error)
 
 
+# Actualización de datos de la base de datos
 def actualizar_dato_baseDeDatos():
     try:
         conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
@@ -480,6 +486,7 @@ def actualizar_dato_baseDeDatos():
             cerrar_seccion_editar()
 
 
+# Exportación de datos de un mes-año específico a planilla excel
 def exportar_datos_baseDeDatos():
     try:
         conexion_bdd = pymysql.connect(user=DB_USER, password=DB_USER_PASSWORD, host=DB_HOST, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, ssl={"rejectUnauthorized":False})
@@ -538,7 +545,8 @@ def exportar_datos_baseDeDatos():
             cerrar_seccion_exportar()
 
 
-#================== Funciones de inicialización componentes secciones agregar ingreso y agregar egreso ==================
+#=================================== FUNCIONES DE AGREGAR INGRESO/EGRESO ======================================#
+# Inicialización de variables
 def inicializar_variables():
     global numero_var
     global asunto_var
@@ -561,6 +569,7 @@ def inicializar_variables():
     descripcion_var=StringVar()
     imprimir=BooleanVar()
 
+# Inicialización de componentes
 def inicializar_componentes(tipo):
     global contenedor0
     global contenedor1
@@ -705,10 +714,12 @@ def inicializar_componentes(tipo):
     entrada4=Entry(contenedor4, textvariable=ncheque_var, font=("Helvetica", 13), validate="key", validatecommand=(validacionNumero, '%S'))
     entrada4.place(x=10, y=5, width=265, height=32)
 
+    # Mostrar formato moneda miles
     def mostrar_formato(*args):
         if len(entrada5.get())>0:
             monto_var.set('{:,}'.format(int(entrada5.get())).replace(",","."))
 
+    # Quitar formato moneda miles
     def quitar_formato(*args):
         if len(entrada5.get())>0:
             monto_var.set(entrada5.get().replace(".",""))
@@ -760,7 +771,7 @@ def inicializar_componentes(tipo):
     botonGuardar.place(x=510, y=610)
     botonGuardar['state']=DISABLED
 
-
+# Cierre sección agregar
 def cerrar_seccion_agregar():
     entradaBuscar['state']=NORMAL
     botonLimpiar['state']=NORMAL
@@ -771,7 +782,8 @@ def cerrar_seccion_agregar():
     contenedor4.place_forget()
     contenedor_campos.place_forget()
     contenedor_operaciones.place(x=890, y=10, width=600, height=75)
-    
+
+# Creación del nuevo elemento
 def crearTransaccion(t):
     global tipo
     global asunto
@@ -802,8 +814,10 @@ def crearTransaccion(t):
     if imprimir.get()==True:
         imprimir_documento()
     global fecha_anterior
-    fecha_anterior=entrada3.get()
+    fecha_anterior=entrada3.get() # Se guarda la fecha anterior
 
+#======================================== FUNCIONES DE EDITAR INGRESO/EGRESO ==========================================================#
+# Inicialización de variables edición
 def inicializar_variables_editor():
     global numero_var
     global asunto_var
@@ -824,6 +838,7 @@ def inicializar_variables_editor():
     descripcion_var=StringVar()
     imprimir=BooleanVar()
 
+# Inicialización componentes editor
 def inicializar_componentes_editor(tipo):
     global contenedor0
     global contenedor1
@@ -984,7 +999,7 @@ def inicializar_componentes_editor(tipo):
     checkBox.configure(bg='#FFFFFF')
     checkBox.place(x=10, y=550)
 
-
+# Cierre sección editar
 def cerrar_seccion_editar():
     entradaBuscar['state']=NORMAL
     botonLimpiar['state']=NORMAL
@@ -1002,6 +1017,7 @@ def cerrar_seccion_editar():
     botonEditar.place_forget()
     botonImprimir.place_forget()
 
+# Se Guardan los cambios realizados
 def guardar_cambios_edicion():
     global numero
     global tipo
@@ -1049,8 +1065,9 @@ def crear_documento():
     documento = DocxTemplate(plantilla_documento)
 
     f=Formato()
-    monto_en_palabras=f.numero_a_moneda_sunat(monto)
+    monto_en_palabras=f.numero_a_moneda_sunat(monto) # monto en palabras
 
+    # Datos a insertar en el documento
     if medio=='Cheque':
         contexto = {
             "NUMERO": numero,
@@ -1099,8 +1116,6 @@ def crear_documento():
     convert(docx_filename, pdf_filename)
     
 
-
-
 # Función que Imprime el documento en la impresora predeterminada
 def imprimir_documento():
     name = win32print.GetDefaultPrinter()
@@ -1114,6 +1129,8 @@ def imprimir_documento():
     win32api.ShellExecute(0, "print", str(numero)+"_"+tipo+".pdf", None,  ".",  0)
     win32print.ClosePrinter(handle)
 
+#=================================== FUNCIONES DE EXPORTAR A EXCEL =========================================#
+# Inicialización de variables exportar
 def inicializar_variables_exportar():
     global tipo_var
     global mes_var
@@ -1122,6 +1139,7 @@ def inicializar_variables_exportar():
     mes_var=StringVar()
     a_var=StringVar()
 
+# Inicialización de componentes
 def inicializar_componentes_exportar():
     
     contenedorTipo=LabelFrame(contenedor_exportar, text="Tipo", font=("Helvetica", 12), bg='#D4CDD6', fg='#02020D')
@@ -1160,6 +1178,7 @@ def inicializar_componentes_exportar():
     botonExportar.place(x=510, y=100)
     botonExportar['state']=DISABLED
 
+# Cierre sección
 def cerrar_seccion_exportar():
     entradaBuscar['state']=NORMAL
     botonLimpiar['state']=NORMAL
@@ -1170,6 +1189,7 @@ def cerrar_seccion_exportar():
     contenedor_exportar.place_forget()
     contenedor_operaciones.place(x=890, y=10, width=600, height=75)
 
+# Exportación de datos
 def exportar_datos():
     cerrar_seccion_exportar()
     global tipo
@@ -1180,10 +1200,12 @@ def exportar_datos():
     anio=a_var.get()
     exportar_datos_baseDeDatos()
 
+# Cierre ventana principal
 def cerrar_ventanaPrincipal():
     if messagebox.askokcancel("Salir", "¿Desea Salir?"):
         app.destroy()
 
+#==================================== FUNCIONES DE CONFIGURACIÓN INICIAL =================================#
 def agregar_ingreso():
     inicializar_variables()
     inicializar_componentes("Ingreso")
@@ -1397,7 +1419,7 @@ estilo_tabla.configure('Treeview.Heading', font=('Helvetica', 12), rowheigth=50)
 estilo_tabla.configure('Treeview', font=('Helvetica', 12), rowheigth=50)
 estilo_tabla.map('Treeview', background=[('selected', 'silver')])
 
-
+# Encabezados de las columnas
 tabla.heading('1', text="Número", anchor=W)
 tabla.heading('2', text="Tipo", anchor=W)
 tabla.heading('3', text="Asunto", anchor=W)
@@ -1408,6 +1430,7 @@ tabla.heading('7', text="Número de Cheque", anchor=W)
 tabla.heading('8', text="Monto", anchor=W)
 tabla.heading('9', text="Por concepto de", anchor=W)
 
+# Configuración de las columnas
 tabla.column('1', stretch=NO, minwidth=80, width=80)
 tabla.column('2', stretch=NO, minwidth=100, width=100)
 tabla.column('3', stretch=NO, minwidth=300, width=300)
@@ -1516,9 +1539,6 @@ botonBuscar.place(x=255, y=10)
 botonBuscar['state']=DISABLED
 botonLimpiar=Button(contenedor_Buscador, text="Limpiar", command=limpiar_tabla, font=("Helvetica", 12), bg='#FFFFFF')
 botonLimpiar.place(x=330, y=10)
-
-
-
 botonAgregarIngreso=Button(contenedor_operaciones, text="Agregar Ingreso", command=agregar_ingreso, font=("Helvetica", 12), bg='#FFFFFF')
 botonAgregarIngreso.place(x=20, y=10)
 botonAgregarEgreso=Button(contenedor_operaciones, text="Agregar Egreso", command=agregar_egreso, font=("Helvetica", 12), bg='#FFFFFF')
