@@ -2,6 +2,7 @@
 
 import sys
 import os
+import io
 from datetime import *
 import time as tiempo
 
@@ -24,6 +25,7 @@ import pymysql
 # Librerías edición docx
 from pathlib import Path
 from docxtpl import DocxTemplate
+from docx2pdf import convert
 
 
 # Librerías impresión
@@ -347,15 +349,12 @@ def obtener_numeroDeFolio_baseDeDatos():
 
         global numero
         ne=int(fila[0]['count(*)'])
-        if ne==0:
-            numero="000-"+str(fecha.year)
+        if ne>=0 and ne<=9:
+            numero = "00"+str(fila[0]['count(*)'])+"-"+str(fecha.year)
+        elif ne>=10 and ne<=99:
+            numero = "0"+str(fila[0]['count(*)'])+"-"+str(fecha.year)
         else:
-            if ne>=1 and ne<=9:
-                numero = "00"+str(fila[0]['count(*)'])+"-"+str(fecha.year)
-            elif ne>=11 and ne<=99:
-                numero = "0"+str(fila[0]['count(*)'])+"-"+str(fecha.year)
-            else:
-                numero = str(fila[0]['count(*)'])+"-"+str(fecha.year)
+            numero = str(fila[0]['count(*)'])+"-"+str(fecha.year)
 
     except pymysql.Error as error:
         if messagebox.showerror(title="Error", message=error):
@@ -415,46 +414,29 @@ def buscar_filtrar_baseDeDatos():
         mycursor = conexion_bdd.cursor()
         if busqueda_var.get()=='':
             if filtroTipo_var.get()!='Todos' and filtroA_var.get()!='Todos':
-                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND YEAR(fecha) = '"+filtroA_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
-                if filtroTipo_var.get()=='Ingreso':
-                    tabla.heading('4', text="Recibido de", anchor=W)
-                else: tabla.heading('4', text="Enviado a", anchor=W)
+                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND YEAR(fecha) = '"+filtroA_var.get()+"' AND substring(`numero`, 1, 3) BETWEEN "+filtroNumero1_var.get()+" and "+filtroNumero2_var.get()+" ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
 
             elif filtroTipo_var.get()!='Todos' and filtroA_var.get()=='Todos':
-                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
-                if filtroTipo_var.get()=='Ingreso':
-                    tabla.heading('4', text="Recibido de", anchor=W)
-                else: tabla.heading('4', text="Enviado a", anchor=W)
+                mycursor.execute("SELECT * FROM Transaccion WHERE `tipo` = '"+filtroTipo_var.get()+"' AND substring(`numero`, 1, 3) BETWEEN "+filtroNumero1_var.get()+" and "+filtroNumero2_var.get()+" ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
             
             elif filtroTipo_var.get()=='Todos' and filtroA_var.get()!='Todos':
-                mycursor.execute("SELECT * FROM Transaccion WHERE YEAR(fecha) = '"+filtroA_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
-                if filtroTipo_var.get()=='Ingreso':
-                    tabla.heading('4', text="Recibido de", anchor=W)
-                else: tabla.heading('4', text="Enviado a", anchor=W)
+                mycursor.execute("SELECT * FROM Transaccion WHERE YEAR(fecha) = '"+filtroA_var.get()+"' AND substring(`numero`, 1, 3) BETWEEN "+filtroNumero1_var.get()+" and "+filtroNumero2_var.get()+" ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
+
             else:
-                mycursor.execute("SELECT * FROM Transaccion ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
-                tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
+                mycursor.execute("SELECT * FROM Transaccion WHERE substring(`numero`, 1, 3) BETWEEN "+filtroNumero1_var.get()+" and "+filtroNumero2_var.get()+" ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
+
         else:
             if filtroTipo_var.get()!='Todos' and filtroA_var.get()!='Todos':
-                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 AND `tipo` = '"+filtroTipo_var.get()+"' AND YEAR(fecha) = '"+filtroA_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
-                if filtroTipo_var.get()=='Ingreso':
-                    tabla.heading('4', text="Recibido de", anchor=W)
-                else: tabla.heading('4', text="Enviado a", anchor=W)
+                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 AND `tipo` = '"+filtroTipo_var.get()+"' AND YEAR(fecha) = '"+filtroA_var.get()+"' AND substring(`numero`, 1, 3) BETWEEN "+filtroNumero1_var.get()+" and "+filtroNumero2_var.get()+" ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
 
             elif filtroTipo_var.get()!='Todos' and filtroA_var.get()=='Todos':
-                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 AND `tipo` = '"+filtroTipo_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
-                if filtroTipo_var.get()=='Ingreso':
-                    tabla.heading('4', text="Recibido de", anchor=W)
-                else: tabla.heading('4', text="Enviado a", anchor=W)
+                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 AND `tipo` = '"+filtroTipo_var.get()+"' AND substring(`numero`, 1, 3) BETWEEN "+filtroNumero1_var.get()+" and "+filtroNumero2_var.get()+" ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
             
             elif filtroTipo_var.get()=='Todos' and filtroA_var.get()!='Todos':
-                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 AND YEAR(fecha) = '"+filtroA_var.get()+"' ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
-                if filtroTipo_var.get()=='Ingreso':
-                    tabla.heading('4', text="Recibido de", anchor=W)
-                else: tabla.heading('4', text="Enviado a", anchor=W)
+                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 AND YEAR(fecha) = '"+filtroA_var.get()+"' AND substring(`numero`, 1, 3) BETWEEN "+filtroNumero1_var.get()+" and "+filtroNumero2_var.get()+" ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC")
             else:
-                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
-                tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
+                mycursor.execute("SELECT * FROM Transaccion WHERE LOCATE('"+busqueda_var.get()+"', `asunto`) > 0 AND substring(`numero`, 1, 3) BETWEEN "+filtroNumero1_var.get()+" and "+filtroNumero2_var.get()+" ORDER BY substring(`numero`, 5) ASC, substring(`numero`, 1, 3) ASC, `tipo` ASC")
+        
         fila = mycursor.fetchall()
         mycursor.close()
         conexion_bdd.close()
@@ -465,6 +447,11 @@ def buscar_filtrar_baseDeDatos():
                 tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], dato['nCheque'], '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
             else: tabla.insert('', 'end', values=(dato['numero'], dato['tipo'], dato['asunto'], dato['persona'], dato['fecha'].strftime("%d-%m-%Y"), dato['medio'], "--------", '{:,}'.format(dato['monto']).replace(',','.'), dato['descripcion']))
 
+        if filtroTipo_var.get()=='Ingreso':
+            tabla.heading('4', text="Recibido de", anchor=W)
+        elif filtroTipo_var.get()=='Egreso':
+            tabla.heading('4', text="Enviado a", anchor=W)
+        else: tabla.heading('4', text="Recibido de/Enviado a", anchor=W)
 
     except pymysql.Error as error:
         messagebox.showerror(title="Error", message=error)
@@ -777,7 +764,10 @@ def inicializar_componentes(tipo):
 def cerrar_seccion_agregar():
     entradaBuscar['state']=NORMAL
     botonLimpiar['state']=NORMAL
-    combo_tipo['state']=NORMAL
+    combo_tipo['state']='readonly'
+    combo_anio['state']='readonly'
+    combo_numero1['state']='readonly'
+    combo_numero2['state']='readonly'
     contenedor4.place_forget()
     contenedor_campos.place_forget()
     contenedor_operaciones.place(x=890, y=10, width=600, height=75)
@@ -807,12 +797,12 @@ def crearTransaccion(t):
     tipo=t
     
     insertar_dato_baseDeDatos() # Conexión a la base de datos (agregar elemento)
+    cerrar_seccion_agregar()
     crear_documento()
     if imprimir.get()==True:
         imprimir_documento()
     global fecha_anterior
     fecha_anterior=entrada3.get()
-    cerrar_seccion_agregar()
 
 def inicializar_variables_editor():
     global numero_var
@@ -998,7 +988,10 @@ def inicializar_componentes_editor(tipo):
 def cerrar_seccion_editar():
     entradaBuscar['state']=NORMAL
     botonLimpiar['state']=NORMAL
-    combo_tipo['state']=NORMAL
+    combo_tipo['state']='readonly'
+    combo_anio['state']='readonly'
+    combo_numero1['state']='readonly'
+    combo_numero2['state']='readonly'
     contenedor4.place_forget()
     contenedor_editor.place_forget()
     contenedor_operaciones.place(x=890, y=10, width=600, height=75)
@@ -1033,10 +1026,10 @@ def guardar_cambios_edicion():
 
     
     actualizar_dato_baseDeDatos() # Conexión a la base de datos (editar elemento)
+    cerrar_seccion_editar()
     crear_documento()
     if imprimir.get()==True:
         imprimir_documento()
-    cerrar_seccion_editar()
 
 # Función que busca la ruta del archivo 
 def findfile(name, path):
@@ -1058,9 +1051,8 @@ def crear_documento():
     f=Formato()
     monto_en_palabras=f.numero_a_moneda_sunat(monto)
 
-
     if medio=='Cheque':
-        context = {
+        contexto = {
             "NUMERO": numero,
             "ASUNTO": asunto,
             "PERSONA": persona,
@@ -1073,7 +1065,7 @@ def crear_documento():
             "DESCRIPCION": descripcion,
         }
     elif medio=='Efectivo':
-        context = {
+        contexto = {
             "NUMERO": numero,
             "ASUNTO": asunto,
             "PERSONA": persona,
@@ -1086,7 +1078,7 @@ def crear_documento():
             "DESCRIPCION": descripcion,
         }
     else:
-        context = {
+        contexto = {
             "NUMERO": numero,
             "ASUNTO": asunto,
             "PERSONA": persona,
@@ -1098,9 +1090,15 @@ def crear_documento():
             "MONTO_PALABRAS": monto_en_palabras,
             "DESCRIPCION": descripcion,
         }
+    
+    documento.render_init()
+    documento.render(contexto, autoescape=True)
+    docx_filename=numero+"_"+tipo+".docx"
+    documento.save(docx_filename)
+    pdf_filename=docx_filename.replace(".docx", ".pdf")
+    convert(docx_filename, pdf_filename)
+    
 
-    documento.render(context)
-    documento.save(f"{numero}_{tipo}.docx")
 
 
 # Función que Imprime el documento en la impresora predeterminada
@@ -1113,7 +1111,7 @@ def imprimir_documento():
     attributes['pDevMode'].Duplex = 3 
     win32print.SetPrinter(handle, level, attributes, 0)
     win32print.GetPrinter(handle, level)['pDevMode'].Duplex
-    win32api.ShellExecute(0, "print", str(numero)+"_"+tipo+".docx", None,  ".",  0)
+    win32api.ShellExecute(0, "print", str(numero)+"_"+tipo+".pdf", None,  ".",  0)
     win32print.ClosePrinter(handle)
 
 def inicializar_variables_exportar():
@@ -1165,11 +1163,15 @@ def inicializar_componentes_exportar():
 def cerrar_seccion_exportar():
     entradaBuscar['state']=NORMAL
     botonLimpiar['state']=NORMAL
-    combo_tipo['state']=NORMAL
+    combo_tipo['state']='readonly'
+    combo_anio['state']='readonly'
+    combo_numero1['state']='readonly'
+    combo_numero2['state']='readonly'
     contenedor_exportar.place_forget()
     contenedor_operaciones.place(x=890, y=10, width=600, height=75)
 
 def exportar_datos():
+    cerrar_seccion_exportar()
     global tipo
     global mes
     global anio
@@ -1177,39 +1179,47 @@ def exportar_datos():
     mes=mes_var.get()
     anio=a_var.get()
     exportar_datos_baseDeDatos()
-    cerrar_seccion_exportar()
 
 def cerrar_ventanaPrincipal():
     if messagebox.askokcancel("Salir", "¿Desea Salir?"):
         app.destroy()
 
 def agregar_ingreso():
+    inicializar_variables()
+    inicializar_componentes("Ingreso")
     entradaBuscar['state']=DISABLED
     botonBuscar['state']=DISABLED
     botonLimpiar['state']=DISABLED
     combo_tipo['state']=DISABLED
+    combo_anio['state']=DISABLED
+    combo_numero1['state']=DISABLED
+    combo_numero2['state']=DISABLED
     contenedor_operaciones.place_forget()
     contenedor_campos['text']="Ingreso"
     contenedor_campos.place(x=890, y=10, width=600, height=680)
-    inicializar_variables()
-    inicializar_componentes("Ingreso")
 
 def agregar_egreso():
+    inicializar_variables()
+    inicializar_componentes("Egreso")
     entradaBuscar['state']=DISABLED
     botonBuscar['state']=DISABLED
     botonLimpiar['state']=DISABLED
     combo_tipo['state']=DISABLED
+    combo_anio['state']=DISABLED
+    combo_numero1['state']=DISABLED
+    combo_numero2['state']=DISABLED
     contenedor_operaciones.place_forget()
     contenedor_campos['text']="Egreso"
     contenedor_campos.place(x=890, y=10, width=600, height=680)
-    inicializar_variables()
-    inicializar_componentes("Egreso")
 
 def editar_transaccion():
     entradaBuscar['state']=DISABLED
     botonBuscar['state']=DISABLED
     botonLimpiar['state']=DISABLED
     combo_tipo['state']=DISABLED
+    combo_anio['state']=DISABLED
+    combo_numero1['state']=DISABLED
+    combo_numero2['state']=DISABLED
     global elemento
     elemento=tabla.selection()[0]
     contenedor_operaciones.place_forget()
@@ -1238,28 +1248,57 @@ def imprimir_transaccion():
     ncheque=tabla.item(elemento)['values'][6]
     monto=int(str(tabla.item(elemento)['values'][7]).replace(".",""))
     descripcion=tabla.item(elemento)['values'][8]
-    filepath=findfile(numero+"_"+tipo+".docx", "\\")
+    #tabla.selection_remove(tabla.selection())
+    deseleccionar_elemento(None)
+    filepath=findfile(numero+"_"+tipo+".pdf", "\\")
     if filepath==None:
         crear_documento()
     imprimir_documento()
-    tabla.selection_remove(tabla.selection())
+    
 
 def exportar_a_excel():
+    inicializar_variables_exportar()
+    inicializar_componentes_exportar()
     entradaBuscar['state']=DISABLED
     botonBuscar['state']=DISABLED
     botonLimpiar['state']=DISABLED
     combo_tipo['state']=DISABLED
+    combo_anio['state']=DISABLED
+    combo_numero1['state']=DISABLED
+    combo_numero2['state']=DISABLED
     contenedor_operaciones.place_forget()
     contenedor_exportar['text']="Exportación a Excel"
     contenedor_exportar.place(x=890, y=10, width=600, height=180)
-    inicializar_variables_exportar()
-    inicializar_componentes_exportar()
 
 
 
 def buscar_asunto():
+    global fecha_anterior
     busqueda_var.set(busqueda_var.get().upper())
-    contenedor_operaciones.place_forget()
+
+    if filtroA_var.get()!='Todos':
+        fecha_anterior=fecha_anterior[0:len(fecha_anterior)-4]+filtroA_var.get()
+        if filtroTipo_var.get()=='Ingreso':
+            botonAgregarIngreso.place(x=20, y=10)
+            botonAgregarEgreso.place_forget()
+        elif filtroTipo_var.get()=='Egreso':
+            botonAgregarIngreso.place_forget()
+            botonAgregarEgreso.place(x=180, y=10)
+        else:
+            botonAgregarIngreso.place(x=20, y=10)
+            botonAgregarEgreso.place(x=180, y=10)
+    else:
+        fecha_anterior=fecha_anterior[0:len(fecha_anterior)-4]+datetime.now().date().strftime('%Y')
+        if filtroTipo_var.get()=='Ingreso':
+            botonAgregarIngreso.place(x=20, y=10)
+            botonAgregarEgreso.place_forget()
+        elif filtroTipo_var.get()=='Egreso':
+            botonAgregarIngreso.place_forget()
+            botonAgregarEgreso.place(x=180, y=10)
+        else:
+            botonAgregarIngreso.place(x=20, y=10)
+            botonAgregarEgreso.place(x=180, y=10)
+    
     buscar_filtrar_baseDeDatos()
 
 def limpiar_tabla():
@@ -1267,19 +1306,44 @@ def limpiar_tabla():
     busqueda_var.set('')
     filtroTipo_var.set('Todos')
     filtroA_var.set('Todos')
+    filtroNumero1_var.set('000')
+    filtroNumero2_var.set('000')
     contenedor_operaciones.place(x=890, y=10, width=600, height=75)
     limpiar_busqueda_baseDeDatos()
 
 def filtrar_tabla(evento):
+    global fecha_anterior
     busqueda_var.set(busqueda_var.get().upper())
-    if filtroTipo_var.get()=='Todos' and filtroTipo_var.get()=='Todos' and busqueda_var.get()=='':
-        contenedor_operaciones.place(x=890, y=10, width=600, height=75)
-    else:
-        contenedor_operaciones.place_forget()
-    buscar_filtrar_baseDeDatos()
 
-def anular_elemento():
-    pass
+    if filtroA_var.get()!='Todos':
+        fecha_anterior=fecha_anterior[0:len(fecha_anterior)-4]+filtroA_var.get()
+        if filtroTipo_var.get()=='Ingreso':
+            botonAgregarIngreso.place(x=20, y=10)
+            botonAgregarEgreso.place_forget()
+        elif filtroTipo_var.get()=='Egreso':
+            botonAgregarIngreso.place_forget()
+            botonAgregarEgreso.place(x=180, y=10)
+        else:
+            botonAgregarIngreso.place(x=20, y=10)
+            botonAgregarEgreso.place(x=180, y=10)
+    else:
+        fecha_anterior=fecha_anterior[0:len(fecha_anterior)-4]+datetime.now().date().strftime('%Y')
+        if filtroTipo_var.get()=='Ingreso':
+            botonAgregarIngreso.place(x=20, y=10)
+            botonAgregarEgreso.place_forget()
+        elif filtroTipo_var.get()=='Egreso':
+            botonAgregarIngreso.place_forget()
+            botonAgregarEgreso.place(x=180, y=10)
+        else:
+            botonAgregarIngreso.place(x=20, y=10)
+            botonAgregarEgreso.place(x=180, y=10)
+
+    if filtroNumero1_var.get()>filtroNumero2_var.get():
+        if messagebox.showwarning(title="Advertencia", message="El rango inferior no puede ser mayor que el superior"):
+            filtroNumero1_var.set('000')
+            filtroNumero2_var.set('999')
+    
+    buscar_filtrar_baseDeDatos()
 
 
 #====================================VENTANA PRINCIPAL=========================================
@@ -1301,7 +1365,7 @@ app.option_add("*TCombobox*Listbox*Font", font.Font(family="Helvetica", size=13)
 # Frames: Contenedores dentro de la ventana que contienen los elementos
 contenedor_Buscador=LabelFrame(app, text="Buscador Asunto", font=('Helvetica', 13), bg='#8297BC', fg='#FFFFFF')
 contenedor_Buscador.place(x=10, y=10, width=420, height=75)
-contenedor_filtros=LabelFrame(app, text="Filtros Tipo y Año", font=('Helvetica', 13), bg='#C5A97B', fg='#FFFFFF')
+contenedor_filtros=LabelFrame(app, text="Filtros Tipo, Año y Números", font=('Helvetica', 13), bg='#C5A97B', fg='#FFFFFF')
 contenedor_filtros.place(x=440, y=10, width=440, height=75)
 
 contenedor_operaciones=LabelFrame(app, text="Operaciones", font=('Helvetica', 13), bg='#E64611', fg='#FFFFFF')
@@ -1349,7 +1413,7 @@ tabla.column('2', stretch=NO, minwidth=100, width=100)
 tabla.column('3', stretch=NO, minwidth=300, width=300)
 tabla.column('4', stretch=NO, minwidth=300, width=300)
 tabla.column('5', stretch=NO, minwidth=100, width=100)
-tabla.column('6', stretch=NO, minwidth=100, width=100)
+tabla.column('6', stretch=NO, minwidth=120, width=120)
 tabla.column('7', stretch=NO, minwidth=150, width=150)
 tabla.column('8', stretch=NO, minwidth=100, width=100)
 tabla.column('9', stretch=NO, minwidth=800, width=800)
@@ -1359,23 +1423,36 @@ def deseleccionar_elemento(evento):
     entradaBuscar['state']=NORMAL
     botonLimpiar['state']=NORMAL
     combo_tipo['state']='readonly'
-    botonAgregarIngreso.place(x=20, y=10)
-    botonAgregarEgreso.place(x=180, y=10)
+    combo_anio['state']='readonly'
+    combo_numero1['state']='readonly'
+    combo_numero2['state']='readonly'
+    if filtroTipo_var.get()=='Ingreso':
+        botonAgregarIngreso.place(x=20, y=10)
+        botonAgregarEgreso.place_forget()
+    elif filtroTipo_var.get()=='Egreso':
+        botonAgregarIngreso.place_forget()
+        botonAgregarEgreso.place(x=180, y=10)
+    else:    
+        botonAgregarIngreso.place(x=20, y=10)
+        botonAgregarEgreso.place(x=180, y=10)
     botonExportarExcel.place(x=340, y=10)
     botonEditar.place_forget()
     botonImprimir.place_forget()
 tabla.bind("<ButtonRelease-3>", deseleccionar_elemento)
 
-def mostrar_boton_editar(evento):
+def seleccionar_elemento(evento):
     entradaBuscar['state']=DISABLED
     botonLimpiar['state']=DISABLED
     combo_tipo['state']=DISABLED
+    combo_anio['state']=DISABLED
+    combo_numero1['state']=DISABLED
+    combo_numero2['state']=DISABLED
     botonAgregarIngreso.place_forget()
     botonAgregarEgreso.place_forget()
     botonExportarExcel.place_forget()
     botonEditar.place(x=20, y=10)
     botonImprimir.place(x=180, y=10)
-tabla.bind("<ButtonRelease-1>", mostrar_boton_editar)
+tabla.bind("<ButtonRelease-1>", seleccionar_elemento)
 
 global busqueda_var
 busqueda_var=StringVar()
@@ -1393,19 +1470,44 @@ app.bind('<KeyRelease>', habilitar_boton)
 
 global filtroTipo_var
 global filtroA_var
+global filtroNumero1_var
+global filtroNumero2_var
 filtroTipo_var=StringVar(value='Todos')
 filtroA_var=StringVar(value='Todos')
+filtroNumero1_var=StringVar(value="000")
+filtroNumero2_var=StringVar(value='999')
+
 
 # Combobox
 combo_tipo=ttk.Combobox(contenedor_filtros, values=['Todos', 'Ingreso', 'Egreso'], textvariable=filtroTipo_var, font=("Helvetica", 12), state='readonly')
-combo_tipo.place(x=10, y=10, width=200)
+combo_tipo.place(x=10, y=10, width=100)
 combo_tipo.bind('<<ComboboxSelected>>', filtrar_tabla)
 
 lista_aFiltro=lista_a.copy()
-lista_aFiltro.insert(1, 'Todos')
+lista_aFiltro.insert(0, 'Todos')
 combo_anio=ttk.Combobox(contenedor_filtros, values=lista_aFiltro, textvariable=filtroA_var, font=("Helvetica", 12), state='readonly')
-combo_anio.place(x=230, y=10, width=200)
+combo_anio.place(x=120, y=10, width=100)
 combo_anio.bind('<<ComboboxSelected>>', filtrar_tabla)
+
+lista_numeros1Filtro=[]
+lista_numeros2Filtro=[]
+for x in range(1000):
+    if x>=0 and x<=9:
+        lista_numeros1Filtro.append("00"+str(x))
+        lista_numeros2Filtro.append("00"+str(x))
+    elif x>=10 and x<=99:
+        lista_numeros1Filtro.append("0"+str(x))
+        lista_numeros2Filtro.append("0"+str(x))
+    else:
+        lista_numeros1Filtro.append(str(x))
+        lista_numeros2Filtro.append(str(x))
+combo_numero1=ttk.Combobox(contenedor_filtros, values=lista_numeros1Filtro, textvariable=filtroNumero1_var, font=("Helvetica", 12), state='readonly')
+combo_numero1.place(x=230, y=10, width=80)
+combo_numero1.bind('<<ComboboxSelected>>', filtrar_tabla)
+combo_numero2=ttk.Combobox(contenedor_filtros, values=lista_numeros2Filtro, textvariable=filtroNumero2_var, font=("Helvetica", 12), state='readonly')
+combo_numero2.place(x=320, y=10, width=80)
+combo_numero2.bind('<<ComboboxSelected>>', filtrar_tabla)
+
 
 
 # Botones
